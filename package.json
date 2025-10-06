@@ -1,9 +1,10 @@
 {
-  "name": "selfanypay",
+  "name": "dootling",
   "version": "1.0.0",
   "main": "dist/server.js",
   "scripts": {
-    "start": "node dist/server.js",
+    "prestart": "npx prisma generate --schema=./src/prisma/schema.prisma",
+    "start": "ts-node -r tsconfig-paths/register src/server.ts",
     "dev": "ts-node-dev --respawn --transpile-only -r tsconfig-paths/register src/server.ts",
     "build": "rimraf dist && tsc",
     "lint": "eslint src --ext .ts",
@@ -44,6 +45,7 @@
     "rimraf": "^6.0.1",
     "supertest": "^7.1.1",
     "ts-node-dev": "^2.0.0",
+    "tsconfig-paths": "^4.2.0",
     "typescript": "^5.8.3"
   }
 }
