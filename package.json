@@ -4,7 +4,7 @@
   "main": "dist/server.js",
   "scripts": {
     "prestart": "npx prisma generate --schema=./src/prisma/schema.prisma",
-    "start": "ts-node -r tsconfig-paths/register src/server.ts",
+    "start": "npx prisma generate --schema=./src/prisma/schema.prisma && ts-node -r tsconfig-paths/register src/server.ts",
     "dev": "ts-node-dev --respawn --transpile-only -r tsconfig-paths/register src/server.ts",
     "build": "rimraf dist && tsc",
     "lint": "eslint src --ext .ts",
