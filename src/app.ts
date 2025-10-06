@@ -18,7 +18,7 @@ app.get("/health", async (req: Request, res: Response) => {
 app.get("/", (req: Request, res: Response) => {
   res.send(`
     <div style="text-align:center;margin-top:10rem">
-      Welcome to SelfanyPay 😜
+      Welcome to Dootling 😜
     </div>
   `);
 });
