@@ -8,10 +8,20 @@ datasource db {
 }
 
 model User {
-  id        String      @id @default(auto()) @map("_id") @db.ObjectId
-  email     String    @unique
-  username  String    @unique
-  password  String    
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id                      String    @id @default(auto()) @map("_id") @db.ObjectId
+ 
+  email                   String    @unique
+  username                String    @unique 
+  fullName                String 
+  password                String    
+  
+  isVerified              Boolean   @default(false)
+  verificationCode        String?   @unique
+  verificationCodeExpires DateTime?
+  
+  resetPasswordToken      String?   @unique
+  resetPasswordExpires    DateTime?
+  
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
 }

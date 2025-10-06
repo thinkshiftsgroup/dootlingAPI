@@ -1,0 +1,171 @@
+import { prisma } from "../prisma";
+import { User } from "@prisma/client";
+import * as bcrypt from "bcryptjs";
+import * as jwt from "jsonwebtoken";
+import { generateSixDigitCode } from "../utils/codeGenerator";
+import {
+  sendVerificationCodeEmail,
+  sendPasswordResetCodeEmail,
+} from "../utils/email";
+
+const getExpiry = (minutes: number): Date => {
+  const expiry = new Date();
+  expiry.setMinutes(expiry.getMinutes() + minutes);
+  return expiry;
+};
+
+export const registerUser = async (
+  fullName: string,
+  email: string,
+  username: string,
+  password: string
+): Promise<User> => {
+  const existingUser = await prisma.user.findUnique({ where: { email } });
+  if (existingUser) {
+    throw new Error("User with this email already exists.");
+  }
+
+  const hashedPassword = await bcrypt.hash(password, 10);
+  const verificationCode = generateSixDigitCode();
+  const verificationCodeExpires = getExpiry(15);
+
+  const newUser = await prisma.user.create({
+    data: {
+      fullName,
+      email,
+      username,
+      password: hashedPassword,
+      verificationCode,
+      verificationCodeExpires,
+      isVerified: false,
+    },
+  });
+
+  await sendVerificationCodeEmail(
+    newUser.email,
+    verificationCode,
+    newUser.fullName
+  );
+
+  return newUser;
+};
+
+export const verifyEmail = async (
+  email: string,
+  code: string
+): Promise<User> => {
+  const user = await prisma.user.findUnique({ where: { email } });
+
+  if (!user) {
+    throw new Error("User not found.");
+  }
+
+  if (user.isVerified) {
+    throw new Error("Email is already verified.");
+  }
+
+  if (
+    user.verificationCode !== code ||
+    user.verificationCodeExpires! < new Date()
+  ) {
+    throw new Error("Invalid or expired verification code.");
+  }
+
+  const updatedUser = await prisma.user.update({
+    where: { email },
+    data: {
+      isVerified: true,
+      verificationCode: null,
+      verificationCodeExpires: null,
+    },
+  });
+
+  return updatedUser;
+};
+
+export const loginUser = async (
+  email: string,
+  password: string
+): Promise<{ user: User; token: string }> => {
+  const user = await prisma.user.findUnique({ where: { email } });
+
+  if (!user) {
+    throw new Error("Invalid credentials.");
+  }
+
+  if (!user.isVerified) {
+    throw new Error("Please verify your email address first.");
+  }
+
+  const isPasswordValid = await bcrypt.compare(password, user.password);
+
+  if (!isPasswordValid) {
+    throw new Error("Invalid credentials.");
+  }
+
+  const token = jwt.sign(
+    { userId: user.id },
+    process.env.JWT_SECRET || "YOUR_UNSAFE_DEFAULT_SECRET",
+    { expiresIn: "1d" }
+  );
+
+  const { password: _, ...userWithoutPassword } = user;
+
+  return { user: userWithoutPassword as User, token };
+};
+
+export const forgotPassword = async (email: string): Promise<void> => {
+  const user = await prisma.user.findUnique({ where: { email } });
+
+  if (!user) {
+    console.log(`Password reset requested for non-existent email: ${email}`);
+    return;
+  }
+
+  const resetCode = generateSixDigitCode();
+  const resetExpires = getExpiry(15);
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      resetPasswordToken: resetCode,
+      resetPasswordExpires: resetExpires,
+    },
+  });
+
+  await sendPasswordResetCodeEmail(user.email, resetCode, user.fullName);
+};
+
+export const resetPassword = async (
+  email: string,
+  code: string,
+  newPassword: string
+): Promise<User> => {
+  const user = await prisma.user.findUnique({ where: { email } });
+
+  if (!user) {
+    throw new Error("User not found.");
+  }
+
+  if (
+    user.resetPasswordToken !== code ||
+    user.resetPasswordExpires! < new Date()
+  ) {
+    throw new Error("Invalid or expired password reset code.");
+  }
+
+  const newHashedPassword = await bcrypt.hash(newPassword, 10);
+
+  const updatedUser = await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      password: newHashedPassword,
+      resetPasswordToken: null,
+      resetPasswordExpires: null,
+    },
+  });
+
+  const { password: _, ...userWithoutPassword } = updatedUser;
+
+  return userWithoutPassword as User;
+};
