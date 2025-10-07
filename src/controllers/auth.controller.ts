@@ -78,8 +78,7 @@ export const forgotPassword = async (req: Request, res: Response) => {
   try {
     await authService.forgotPassword(email);
     res.status(200).json({
-      message:
-        "If a user exists, a password reset code has been sent to their email.",
+      message: "Password reset code has been sent to your email.",
     });
   } catch (error: any) {
     res
