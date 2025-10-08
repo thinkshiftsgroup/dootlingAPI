@@ -11,7 +11,7 @@
     "lint:fix": "eslint src --ext .ts --fix",
     "test": "cross-env NODE_ENV=test jest --detectOpenHandles --forceExit --coverage",
     "test:watch": "cross-env NODE_ENV=test jest --watchAll",
-    "prisma:generate": "npx prisma generate",
+    "prisma:generate": "npx prisma generate --schema=./src/prisma/schema.prisma",
     "prisma:db:push": "npx prisma db push",
     "prisma:studio": "npx prisma studio"
   },
