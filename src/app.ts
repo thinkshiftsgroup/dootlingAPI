@@ -4,10 +4,24 @@ import helmet from "helmet";
 import morgan from "morgan";
 import { errorHandler } from "@middlewares/error.middleware";
 import authRoutes from "./routes/auth.routes";
+
 const app = express();
 
+const allowedOrigins = [
+  "http://dootling.com",
+  "https://dootling.com",
+  "https://www.dootling.com",
+  "http://localhost:3000",
+  "http://localhost:3002",
+];
+
+const corsOptions = {
+  origin: allowedOrigins,
+  credentials: true,
+};
+
 app.use(helmet());
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(morgan("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -20,10 +34,10 @@ app.get("/health", async (req: Request, res: Response) => {
 
 app.get("/", (req: Request, res: Response) => {
   res.send(`
-    <div style="text-align:center;margin-top:10rem">
-      Welcome to Dootling 😜
-    </div>
-  `);
+    <div style="text-align:center;margin-top:10rem">
+      Welcome to Dootling 😜
+    </div>
+  `);
 });
 
 app.use(errorHandler);
