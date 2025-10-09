@@ -1,37 +1,41 @@
 import { Request, Response } from "express";
 import * as authService from "../services/auth.service";
+const generateUniqueUsername = (fullName: string): string => {
+  const sanitizedName = fullName.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const specialDigits = Math.floor(1000 + Math.random() * 9000).toString();
+  let username = `${sanitizedName.substring(0, 11)}${specialDigits}`;
+  return username;
+};
 
 export const signUp = async (req: Request, res: Response) => {
-  const { fullName, email, username, password } = req.body;
+  const { fullName, email, password } = req.body;
 
-  if (!fullName || !email || !username || !password) {
-    return res.status(400).json({ message: "All fields are required." });
+  if (!fullName || !email || !password) {
+    return res.status(400).json({
+      message:
+        "All required fields are missing: Full Name, Email, and Password.",
+    });
   }
 
   try {
-    const newUser = await authService.registerUser(
+    const generatedUsername = generateUniqueUsername(fullName);
+
+    const { user, token } = await authService.registerUser(
       fullName,
       email,
-      username,
+      generatedUsername,
       password
     );
-    const {
-      password: _,
-      verificationCode: __,
-      verificationCodeExpires: ___,
-      ...userResponse
-    } = newUser;
 
     res.status(201).json({
-      message:
-        "User registered successfully. Check your email for a verification code.",
-      user: userResponse,
+      message: "Registration successful. You are now logged in.",
+      user: user,
+      token: token,
     });
   } catch (error: any) {
     res.status(400).json({ message: error.message });
   }
 };
-
 export const verifyEmail = async (req: Request, res: Response) => {
   const { email, code } = req.body;
 
@@ -48,6 +52,26 @@ export const verifyEmail = async (req: Request, res: Response) => {
       .json({ message: "Email successfully verified. You can now log in." });
   } catch (error: any) {
     res.status(400).json({ message: error.message });
+  }
+};
+
+export const resendVerificationCode = async (req: Request, res: Response) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).json({ message: "Email is required." });
+  }
+
+  try {
+    await authService.resendVerificationCode(email);
+    res.status(200).json({
+      message: "New verification code has been sent to your email.",
+    });
+  } catch (error: any) {
+    const status = error.message.includes("already verified") ? 400 : 500;
+    res.status(status).json({
+      message: error.message || "Failed to resend verification code.",
+    });
   }
 };
 

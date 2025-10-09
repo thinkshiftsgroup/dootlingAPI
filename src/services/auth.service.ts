@@ -13,13 +13,17 @@ const getExpiry = (minutes: number): Date => {
   expiry.setMinutes(expiry.getMinutes() + minutes);
   return expiry;
 };
+const generateAuthToken = (userId: string): string => {
+  const secret = process.env.JWT_SECRET || "YOUR_UNSAFE_DEFAULT_SECRET";
+  return jwt.sign({ id: userId }, secret, { expiresIn: "7d" });
+};
 
 export const registerUser = async (
   fullName: string,
   email: string,
   username: string,
   password: string
-): Promise<User> => {
+): Promise<{ user: Omit<User, "password">; token: string }> => {
   const existingUser = await prisma.user.findUnique({ where: { email } });
   if (existingUser) {
     throw new Error("User with this email already exists.");
@@ -37,9 +41,17 @@ export const registerUser = async (
       password: hashedPassword,
       verificationCode,
       verificationCodeExpires,
-      isVerified: false,
+      isVerified: true,
     },
   });
+
+  const token = jwt.sign(
+    { userId: newUser.id },
+    process.env.JWT_SECRET || "YOUR_UNSAFE_DEFAULT_SECRET",
+    { expiresIn: "1d" }
+  );
+
+  const { password: _, ...userWithoutPassword } = newUser;
 
   await sendVerificationCodeEmail(
     newUser.email,
@@ -47,13 +59,13 @@ export const registerUser = async (
     newUser.fullName
   );
 
-  return newUser;
+  return { user: userWithoutPassword, token };
 };
 
 export const verifyEmail = async (
   email: string,
   code: string
-): Promise<User> => {
+): Promise<{ token: string; user: User }> => {
   const user = await prisma.user.findUnique({ where: { email } });
 
   if (!user) {
@@ -80,7 +92,39 @@ export const verifyEmail = async (
     },
   });
 
-  return updatedUser;
+  const token = generateAuthToken(updatedUser.id);
+
+  return { token, user: updatedUser };
+};
+
+export const resendVerificationCode = async (email: string): Promise<void> => {
+  const user = await prisma.user.findUnique({ where: { email } });
+
+  if (!user) {
+    console.log(`Resend requested for non-existent email: ${email}`);
+    throw new Error("User not found.");
+  }
+
+  if (user.isVerified) {
+    throw new Error("Email is already verified. Please log in.");
+  }
+
+  const newVerificationCode = generateSixDigitCode();
+  const newVerificationCodeExpires = getExpiry(15);
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      verificationCode: newVerificationCode,
+      verificationCodeExpires: newVerificationCodeExpires,
+    },
+  });
+
+  await sendVerificationCodeEmail(
+    user.email,
+    newVerificationCode,
+    user.fullName
+  );
 };
 
 export const loginUser = async (
