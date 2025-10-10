@@ -12,7 +12,7 @@ interface BiodataUpdateData {
   country?: string;
   pronouns?: string;
   phone?: string;
-  state?: string;
+  city?: string;
   role?: string;
   industry?: string;
   tags?: string;
@@ -46,7 +46,7 @@ export async function updateProfile(
     country,
     pronouns,
     phone,
-    state,
+    city,
     role,
     industry,
     tags,
@@ -75,7 +75,7 @@ export async function updateProfile(
   if (country !== undefined) biodataPayload.country = country;
   if (pronouns !== undefined) biodataPayload.pronouns = pronouns;
   if (phone !== undefined) biodataPayload.phone = phone;
-  if (state !== undefined) biodataPayload.state = state;
+  if (city !== undefined) biodataPayload.city = city;
   if (role !== undefined) biodataPayload.role = role;
   if (industry !== undefined) biodataPayload.industry = industry;
   if (tags !== undefined) biodataPayload.tags = tags;

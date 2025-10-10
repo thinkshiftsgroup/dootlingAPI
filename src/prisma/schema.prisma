@@ -35,7 +35,7 @@ model Biodata {
   country   String?
   pronouns   String?
   phone     String?
-  state     String?
+  city     String?
   role      String?
   industry  String?
   tags      String?
