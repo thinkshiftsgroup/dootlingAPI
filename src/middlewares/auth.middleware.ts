@@ -19,7 +19,7 @@ const handleTokenVerification = async (
   req: CustomRequest,
   res: Response,
   next: NextFunction,
-  requiredRole?: "admin" | "superadmin"
+  userType?: "admin" | "superadmin"
 ): Promise<void> => {
   let token;
 
@@ -49,16 +49,16 @@ const handleTokenVerification = async (
 
       req.user = user;
 
-      if (requiredRole) {
+      if (userType) {
         if (
-          (requiredRole === "admin" &&
+          (userType === "admin" &&
             (user.userType === "admin" || user.userType === "superadmin")) ||
-          (requiredRole === "superadmin" && user.userType === "superadmin")
+          (userType === "superadmin" && user.userType === "superadmin")
         ) {
           next();
         } else {
           res.status(403).json({
-            message: `Not authorized, requires ${requiredRole} access`,
+            message: `Not authorized, requires ${userType} access`,
           });
         }
       } else {
