@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import * as profileService from "../services/profile.service";
 
 export const getProfileController = async (req: Request, res: Response) => {
-  const userId = (req as any).user.id;
+  const userId = req.user?.id;
   console.log(req.user);
   if (!userId) {
     return res.status(401).json({ message: "Authentication required." });
@@ -25,8 +25,7 @@ export const getProfileController = async (req: Request, res: Response) => {
 };
 
 export const updateProfileController = async (req: Request, res: Response) => {
-  const userId = (req as any).user.id;
-
+  const userId = req.user?.id;
   if (!userId) {
     return res.status(401).json({ message: "Authentication required." });
   }
