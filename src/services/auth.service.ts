@@ -13,9 +13,26 @@ const getExpiry = (minutes: number): Date => {
   expiry.setMinutes(expiry.getMinutes() + minutes);
   return expiry;
 };
-const generateAuthToken = (userId: string): string => {
+
+const generateAuthToken = (user: {
+  id: string;
+  email: string;
+  username: string | null;
+  isVerified: boolean;
+  userType: string;
+}): string => {
   const secret = process.env.JWT_SECRET || "YOUR_UNSAFE_DEFAULT_SECRET";
-  return jwt.sign({ id: userId }, secret, { expiresIn: "7d" });
+  return jwt.sign(
+    {
+      id: user.id,
+      email: user.email,
+      username: user.username,
+      isVerified: user.isVerified,
+      userType: user.userType,
+    },
+    secret,
+    { expiresIn: "7d" }
+  );
 };
 
 export const registerUser = async (
@@ -42,14 +59,11 @@ export const registerUser = async (
       verificationCode,
       verificationCodeExpires,
       isVerified: true,
+      userType: "user",
     },
   });
 
-  const token = jwt.sign(
-    { userId: newUser.id },
-    process.env.JWT_SECRET || "YOUR_UNSAFE_DEFAULT_SECRET",
-    { expiresIn: "1d" }
-  );
+  const token = generateAuthToken(newUser);
 
   const { password: _, ...userWithoutPassword } = newUser;
 
@@ -65,7 +79,7 @@ export const registerUser = async (
 export const verifyEmail = async (
   email: string,
   code: string
-): Promise<{ token: string; user: User }> => {
+): Promise<{ token: string; user: Omit<User, "password"> }> => {
   const user = await prisma.user.findUnique({ where: { email } });
 
   if (!user) {
@@ -92,9 +106,11 @@ export const verifyEmail = async (
     },
   });
 
-  const token = generateAuthToken(updatedUser.id);
+  const token = generateAuthToken(updatedUser);
 
-  return { token, user: updatedUser };
+  const { password: _, ...userWithoutPassword } = updatedUser;
+
+  return { token, user: userWithoutPassword };
 };
 
 export const resendVerificationCode = async (email: string): Promise<void> => {
@@ -130,7 +146,7 @@ export const resendVerificationCode = async (email: string): Promise<void> => {
 export const loginUser = async (
   email: string,
   password: string
-): Promise<{ user: User; token: string }> => {
+): Promise<{ user: Omit<User, "password">; token: string }> => {
   const user = await prisma.user.findUnique({ where: { email } });
 
   if (!user) {
@@ -147,15 +163,11 @@ export const loginUser = async (
     throw new Error("Invalid credentials.");
   }
 
-  const token = jwt.sign(
-    { userId: user.id },
-    process.env.JWT_SECRET || "YOUR_UNSAFE_DEFAULT_SECRET",
-    { expiresIn: "1d" }
-  );
+  const token = generateAuthToken(user);
 
   const { password: _, ...userWithoutPassword } = user;
 
-  return { user: userWithoutPassword as User, token };
+  return { user: userWithoutPassword, token };
 };
 
 export const forgotPassword = async (email: string): Promise<void> => {
@@ -184,7 +196,7 @@ export const resetPassword = async (
   email: string,
   code: string,
   newPassword: string
-): Promise<User> => {
+): Promise<Omit<User, "password">> => {
   const user = await prisma.user.findUnique({ where: { email } });
 
   if (!user) {
@@ -211,5 +223,5 @@ export const resetPassword = async (
 
   const { password: _, ...userWithoutPassword } = updatedUser;
 
-  return userWithoutPassword as User;
+  return userWithoutPassword;
 };
