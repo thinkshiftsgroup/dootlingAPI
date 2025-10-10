@@ -21,6 +21,7 @@
       "@services/*": ["src/services/*"]
     }
   },
+  "files": ["src/types/express.d.ts"],
   "include": ["src/**/*.ts", "src/**/*.d.ts"],
   "exclude": ["node_modules", "dist", "src/**/*.test.ts"]
 }
