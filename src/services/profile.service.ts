@@ -21,15 +21,25 @@ interface BiodataUpdateData {
 
 type UpdateData = UserUpdateData & BiodataUpdateData;
 
-interface BiodataWithEmail extends Biodata {
+interface BiodataWithProfile extends Biodata {
+  firstname: string | null;
+  lastname: string | null;
   email: string;
 }
 
-export async function fetchBiodata(userId: string): Promise<BiodataWithEmail> {
+export async function fetchBiodata(
+  userId: string
+): Promise<BiodataWithProfile> {
   try {
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, fullName: true, email: true },
+      select: {
+        id: true,
+        fullName: true,
+        email: true,
+        firstname: true,
+        lastname: true,
+      },
     });
 
     if (!user) {
@@ -52,12 +62,14 @@ export async function fetchBiodata(userId: string): Promise<BiodataWithEmail> {
       });
     }
 
-    const biodataWithEmail: BiodataWithEmail = {
+    const biodataWithProfile: BiodataWithProfile = {
       ...biodata,
       email: user.email,
+      firstname: user.firstname,
+      lastname: user.lastname,
     };
 
-    return biodataWithEmail;
+    return biodataWithProfile;
   } catch (error) {
     throw new Error(
       error instanceof Error
