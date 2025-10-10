@@ -6,7 +6,6 @@ interface UserUpdateData {
   firstname?: string;
   lastname?: string;
 }
-
 interface BiodataUpdateData {
   dateOfBirth?: Date;
   country?: string;
@@ -20,13 +19,11 @@ interface BiodataUpdateData {
 }
 
 type UpdateData = UserUpdateData & BiodataUpdateData;
-
 interface BiodataWithProfile extends Biodata {
   firstname: string | null;
   lastname: string | null;
   email: string;
 }
-
 export async function fetchBiodata(
   userId: string
 ): Promise<BiodataWithProfile> {
@@ -43,7 +40,7 @@ export async function fetchBiodata(
     });
 
     if (!user) {
-      throw new Error(`User with ID ${userId} not found.`);
+      throw new Error(`User with ID: ${userId} not found.`);
     }
 
     let biodata = await prisma.biodata.findUnique({
