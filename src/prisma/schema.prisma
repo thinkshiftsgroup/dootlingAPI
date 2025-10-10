@@ -16,6 +16,7 @@ model User {
   lastname                String?
   userType                String    @default("user")
   password                String    
+  profilePhotoUrl         String?
   isVerified              Boolean   @default(false)
   verificationCode        String?   @unique
   verificationCodeExpires DateTime?
@@ -30,11 +31,14 @@ model User {
 model Biodata {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
   userId    String   @unique @db.ObjectId
-  age       Int?
+  dateOfBirth DateTime @default(now())
   country   String?
+  pronouns   String?
+  phone     String?
   state     String?
   role      String?
   industry  String?
+  tags      String?
   headline  String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

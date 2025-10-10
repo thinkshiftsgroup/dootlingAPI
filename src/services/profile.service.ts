@@ -1,8 +1,27 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, Biodata } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-export async function fetchBiodata(userId: string) {
+interface UserUpdateData {
+  firstname?: string;
+  lastname?: string;
+}
+
+interface BiodataUpdateData {
+  dateOfBirth?: Date;
+  country?: string;
+  pronouns?: string;
+  phone?: string;
+  state?: string;
+  role?: string;
+  industry?: string;
+  tags?: string;
+  headline?: string;
+}
+
+type UpdateData = UserUpdateData & BiodataUpdateData;
+
+export async function fetchBiodata(userId: string): Promise<Biodata | null> {
   try {
     const biodata = await prisma.biodata.findUnique({
       where: {
@@ -16,33 +35,85 @@ export async function fetchBiodata(userId: string) {
   }
 }
 
-export async function updateBiodata(userId: string, data: any) {
-  const { age, country, state, role, industry, headline } = data;
-
-  const updatePayload = {
-    age,
+export async function updateProfile(
+  userId: string,
+  data: UpdateData
+): Promise<{ user: any; biodata: Biodata }> {
+  const {
+    firstname,
+    lastname,
+    dateOfBirth,
     country,
+    pronouns,
+    phone,
     state,
     role,
     industry,
+    tags,
     headline,
-  };
+  } = data;
+
+  const userUpdatePayload: any = {};
+
+  if (firstname !== undefined) userUpdatePayload.firstname = firstname;
+  if (lastname !== undefined) userUpdatePayload.lastname = lastname;
+
+  if (firstname !== undefined || lastname !== undefined) {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (user) {
+      const newFirst =
+        firstname !== undefined ? firstname : user.firstname || "";
+      const newLast = lastname !== undefined ? lastname : user.lastname || "";
+
+      userUpdatePayload.fullName = `${newFirst} ${newLast}`.trim();
+    }
+  }
+
+  const biodataPayload: any = {};
+
+  if (dateOfBirth !== undefined) biodataPayload.dateOfBirth = dateOfBirth;
+  if (country !== undefined) biodataPayload.country = country;
+  if (pronouns !== undefined) biodataPayload.pronouns = pronouns;
+  if (phone !== undefined) biodataPayload.phone = phone;
+  if (state !== undefined) biodataPayload.state = state;
+  if (role !== undefined) biodataPayload.role = role;
+  if (industry !== undefined) biodataPayload.industry = industry;
+  if (tags !== undefined) biodataPayload.tags = tags;
+  if (headline !== undefined) biodataPayload.headline = headline;
 
   try {
-    const updatedBiodata = await prisma.biodata.upsert({
-      where: {
-        userId: userId,
-      },
-      update: updatePayload,
-      create: {
-        userId: userId,
-        ...updatePayload,
-      },
-    });
+    const [updatedUser, updatedBiodata] = await prisma.$transaction([
+      Object.keys(userUpdatePayload).length > 0
+        ? prisma.user.update({
+            where: { id: userId },
+            data: userUpdatePayload,
+          })
+        : prisma.user.findUnique({ where: { id: userId } }),
 
-    return updatedBiodata;
+      prisma.biodata.upsert({
+        where: { userId: userId },
+        update: biodataPayload,
+        create: {
+          userId: userId,
+          ...biodataPayload,
+          dateOfBirth: biodataPayload.dateOfBirth || new Date(),
+        },
+      }),
+    ]);
+
+    if (!updatedUser) {
+      throw new Error("User not found during update transaction.");
+    }
+
+    const { password, ...userWithoutPassword } = updatedUser;
+
+    return { user: userWithoutPassword, biodata: updatedBiodata };
   } catch (error) {
-    console.error("Error updating/creating biodata:", error);
-    throw new Error("Could not update biodata details.");
+    console.error("Error updating profile:", error);
+    const errorMessage =
+      error instanceof Error
+        ? error.message
+        : "Could not update profile details.";
+    throw new Error(errorMessage);
   }
 }
