@@ -58,7 +58,7 @@ export const registerUser = async (
       password: hashedPassword,
       verificationCode,
       verificationCodeExpires,
-      isVerified: true,
+      // isVerified: true,
       userType: "user",
     },
   });
