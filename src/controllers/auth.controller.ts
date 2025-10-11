@@ -46,10 +46,12 @@ export const verifyEmail = async (req: Request, res: Response) => {
   }
 
   try {
-    await authService.verifyEmail(email, code);
-    res
-      .status(200)
-      .json({ message: "Email successfully verified. You can now log in." });
+    const { user, token } = await authService.verifyEmail(email, code);
+    res.status(200).json({
+      message: "Email successfully verified. You can now log in.",
+      user,
+      token,
+    });
   } catch (error: any) {
     res.status(400).json({ message: error.message });
   }
