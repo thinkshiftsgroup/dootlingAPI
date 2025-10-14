@@ -1,6 +1,7 @@
-import { PrismaClient, Biodata } from "@prisma/client";
+import { PrismaClient, Biodata, User } from "@prisma/client";
 
 const prisma = new PrismaClient();
+type UserWithoutPassword = Omit<User, "password">;
 
 interface UserUpdateData {
   firstname?: string;
@@ -164,6 +165,28 @@ export async function updateProfile(
       error instanceof Error
         ? error.message
         : "Could not update profile details.";
+    throw new Error(errorMessage);
+  }
+}
+export async function updateProfilePhotoUrl(
+  userId: string,
+  profilePhotoUrl: string | null
+): Promise<UserWithoutPassword> {
+  try {
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        profilePhotoUrl: profilePhotoUrl,
+      },
+    });
+
+    const { password, ...userWithoutPassword } = updatedUser;
+    return userWithoutPassword;
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error
+        ? error.message
+        : "Could not update profile photo URL.";
     throw new Error(errorMessage);
   }
 }

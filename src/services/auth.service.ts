@@ -1,5 +1,5 @@
 import { prisma } from "../prisma";
-import { User } from "@prisma/client";
+import { User, Biodata } from "@prisma/client";
 import * as bcrypt from "bcryptjs";
 import * as jwt from "jsonwebtoken";
 import { generateSixDigitCode } from "../utils/codeGenerator";
@@ -13,6 +13,7 @@ const getExpiry = (minutes: number): Date => {
   expiry.setMinutes(expiry.getMinutes() + minutes);
   return expiry;
 };
+type UserWithBiodata = Omit<User, "password"> & { biodata: Biodata | null };
 
 const generateAuthToken = (user: {
   id: string;
@@ -66,14 +67,27 @@ export const registerUser = async (
   const token = generateAuthToken(newUser);
 
   const { password: _, ...userWithoutPassword } = newUser;
+  const newBiodata = await prisma.biodata.create({
+    data: {
+      userId: newUser.id,
+      dateOfBirth: new Date(),
+      headline: `A new member, ${
+        newUser.fullName || newUser.email
+      }, has joined!`,
+    },
+  });
 
+  const userWithBiodata: UserWithBiodata = {
+    ...userWithoutPassword,
+    biodata: newBiodata,
+  };
   await sendVerificationCodeEmail(
     newUser.email,
     verificationCode,
     newUser.fullName
   );
 
-  return { user: userWithoutPassword, token };
+  return { user: userWithBiodata, token };
 };
 
 export const verifyEmail = async (
@@ -147,8 +161,10 @@ export const loginUser = async (
   email: string,
   password: string
 ): Promise<{ user: Omit<User, "password">; token: string }> => {
-  const user = await prisma.user.findUnique({ where: { email } });
-
+  const user = await prisma.user.findUnique({
+    where: { email },
+    include: { biodata: true },
+  });
   if (!user) {
     throw new Error("Invalid credentials.");
   }
@@ -165,9 +181,9 @@ export const loginUser = async (
 
   const token = generateAuthToken(user);
 
-  const { password: _, ...userWithoutPassword } = user;
+  const { password: _, ...userWithBiodata } = user;
 
-  return { user: userWithoutPassword, token };
+  return { user: userWithBiodata, token };
 };
 
 export const forgotPassword = async (email: string): Promise<void> => {

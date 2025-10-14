@@ -52,3 +52,59 @@ export const updateProfileController = async (req: Request, res: Response) => {
     });
   }
 };
+
+export const updateProfilePhotoController = async (
+  req: Request,
+  res: Response
+) => {
+  const userId = req.user?.id;
+  if (!userId) {
+    return res.status(401).json({ message: "Authentication required." });
+  }
+
+  const { profilePhotoUrl } = req.body as { profilePhotoUrl?: string };
+
+  if (!profilePhotoUrl) {
+    return res
+      .status(400)
+      .json({ message: "Missing profilePhotoUrl in request body." });
+  }
+
+  try {
+    const updatedUser = await profileService.updateProfilePhotoUrl(
+      userId,
+      profilePhotoUrl
+    );
+
+    return res.status(200).json(updatedUser);
+  } catch (error) {
+    console.error("Error in updateProfilePhotoController:", error);
+    return res.status(500).json({
+      message: (error as Error).message || "Could not update profile photo.",
+    });
+  }
+};
+
+export const removeProfilePhotoController = async (
+  req: Request,
+  res: Response
+) => {
+  const userId = req.user?.id;
+  if (!userId) {
+    return res.status(401).json({ message: "Authentication required." });
+  }
+
+  try {
+    const updatedUser = await profileService.updateProfilePhotoUrl(
+      userId,
+      null
+    );
+
+    return res.status(200).json(updatedUser);
+  } catch (error) {
+    console.error("Error in removeProfilePhotoController:", error);
+    return res.status(500).json({
+      message: (error as Error).message || "Could not remove profile photo.",
+    });
+  }
+};
