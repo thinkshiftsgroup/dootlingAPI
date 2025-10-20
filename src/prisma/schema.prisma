@@ -27,8 +27,13 @@ model User {
   
   biodata                 Biodata?
   serviceConnections      ServiceConnection[] 
+  wallet                  Wallet?             
+  projectsOwned           Project[]           @relation("ProjectOwner") 
+  contributions           Contributor[]       
+  followers               Follows[]           @relation("Follower")
+  following               Follows[]           @relation("Following")
+  messages                Message[]
 }
-
 
 model Biodata {
   id            String    @id @default(auto()) @map("_id") @db.ObjectId
@@ -48,7 +53,6 @@ model Biodata {
   user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-
 model ServiceConnection {
   id                    String    @id @default(auto()) @map("_id") @db.ObjectId
   userId                String    @db.ObjectId
@@ -66,4 +70,156 @@ model ServiceConnection {
 
   @@unique([serviceType, serviceAccountId])
   @@index([userId, serviceType]) 
+}
+
+model Wallet {
+  id              String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId          String    @unique @db.ObjectId
+  walletBalance   Float     @default(0.0) 
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Follows {
+  id              String    @id @default(auto()) @map("_id") @db.ObjectId
+  followerId      String    @db.ObjectId
+  followingId     String    @db.ObjectId
+  createdAt       DateTime  @default(now())
+
+  follower        User      @relation("Follower", fields: [followerId], references: [id], onDelete: Cascade)
+  following       User      @relation("Following", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, followingId])
+}
+
+model Project {
+  id                      String        @id @default(auto()) @map("_id") @db.ObjectId
+  ownerId                 String        @db.ObjectId
+  title                   String
+  description             String
+  isPublic                Boolean       @default(false)
+  
+  status                  String        @default("INACTIVE") 
+  totalBudget             Float         @default(0.0)
+  startDate               DateTime
+  deliveryDate            DateTime
+  contractClauses         String
+  receiveEmailNotifications Boolean     @default(true)
+  fundsRule               Boolean       @default(true) 
+  isDeleted               Boolean       @default(false)
+  
+  amountReleased          Float         @default(0.0)
+  amountPending           Float         @default(0.0) 
+  completionPercentage    Float         @default(0.0)
+  
+  createdAt               DateTime      @default(now())
+  updatedAt               DateTime      @updatedAt
+  
+  owner                   User          @relation("ProjectOwner", fields: [ownerId], references: [id])
+  contributors            Contributor[]
+  milestones              Milestone[]
+  payments                PaymentAudit[]
+  messages                Message[]
+  galleryItems            GalleryItem[]
+}
+
+model Contributor {
+  id                      String        @id @default(auto()) @map("_id") @db.ObjectId
+  projectId               String        @db.ObjectId
+  userId                  String        @db.ObjectId
+  role                    String?
+  budgetPercentage        Float         
+  releasePercentage       Float         @default(0.0) 
+  fundsReleased           Float         @default(0.0)
+
+  createdAt               DateTime      @default(now())
+  updatedAt               DateTime      @updatedAt
+
+  project                 Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user                    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tasks                   Task[]
+  
+  @@unique([projectId, userId]) 
+}
+
+model PaymentAudit {
+  id                      String        @id @default(auto()) @map("_id") @db.ObjectId
+  projectId               String        @db.ObjectId
+  contributorId           String?       @db.ObjectId 
+  releaseAmount           Float
+  releaseDate             DateTime      @default(now())
+  milestoneId             String?       @db.ObjectId
+  
+  createdAt               DateTime      @default(now())
+
+  project                 Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model Milestone {
+  id                      String        @id @default(auto()) @map("_id") @db.ObjectId
+  projectId               String        @db.ObjectId
+  title                   String
+  releasePercentage       Float         
+  dueDate                 DateTime
+  description             String?
+  releaseDate             DateTime?
+  
+  createdAt               DateTime      @default(now())
+  updatedAt               DateTime      @updatedAt
+  
+  project                 Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tasks                   Task[]
+  galleryItems            GalleryItem[] @relation("MilestoneGallery")
+}
+
+model Task {
+  id                      String        @id @default(auto()) @map("_id") @db.ObjectId
+  milestoneId             String        @db.ObjectId
+  contributorId           String        @db.ObjectId 
+  title                   String
+  priority                String        @default("MEDIUM")
+  dueDate                 DateTime
+  description             String?
+  
+  percentageOfProject     Float         
+  percentageToRelease     Float         
+  releaseDate             DateTime?
+  
+  createdAt               DateTime      @default(now())
+  updatedAt               DateTime      @updatedAt
+  
+  milestone               Milestone     @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
+  contributor             Contributor   @relation(fields: [contributorId], references: [id])
+  galleryItems            GalleryItem[] @relation("TaskGallery")
+}
+
+model Message {
+  id                      String        @id @default(auto()) @map("_id") @db.ObjectId
+  projectId               String        @db.ObjectId
+  senderId                String        @db.ObjectId
+  content                 String
+  
+  createdAt               DateTime      @default(now())
+
+  project                 Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sender                  User          @relation(fields: [senderId], references: [id])
+}
+
+model GalleryItem {
+  id                      String        @id @default(auto()) @map("_id") @db.ObjectId
+  projectId               String        @db.ObjectId
+  url                     String
+  fileType                String        
+  uploadedByUserId        String        @db.ObjectId
+
+  milestoneId             String?       @db.ObjectId
+  taskId                  String?       @db.ObjectId
+
+  project                 Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  milestone               Milestone?    @relation("MilestoneGallery", fields: [milestoneId], references: [id])
+  task                    Task?         @relation("TaskGallery", fields: [taskId], references: [id])
+
+  createdAt               DateTime      @default(now())
 }
