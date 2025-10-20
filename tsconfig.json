@@ -19,7 +19,8 @@
       "@config/*": ["src/config/*"],
       "@utils/*": ["src/utils/*"],
       "@services/*": ["src/services/*"]
-    }
+    },
+    "typeRoots": ["./node_modules/@types", "./src/types"]
   },
   "files": ["src/types/express.d.ts"],
   "include": ["src/**/*.ts", "src/**/*.d.ts"],
