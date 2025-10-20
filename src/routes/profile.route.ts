@@ -16,4 +16,5 @@ router.post("/", asyncHandler(updateProfileController));
 router.patch("/photo", asyncHandler(updateProfilePhotoController));
 
 router.delete("/photo", asyncHandler(removeProfilePhotoController));
-export default router;
+
+export const profileRouter = router;

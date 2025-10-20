@@ -3,8 +3,11 @@ import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
 import { errorHandler } from "@middlewares/error.middleware";
-import authRoutes from "@routes/auth.routes";
-import profileRoutes from "@routes/profile.route";
+
+import { authRouter } from "@routes/auth.routes";
+import { profileRouter } from "@routes/profile.route";
+import { followsRouter } from "@routes/follows.router";
+import { connectionsRouter } from "@routes/serviceConnection.router";
 const app = express();
 
 const allowedOrigins = [
@@ -26,8 +29,10 @@ app.use(morgan("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.use("/api/auth", authRoutes);
-app.use("/api/profile", profileRoutes);
+app.use("/api/auth", authRouter);
+app.use("/api/profile", profileRouter);
+app.use("/api/follows", followsRouter);
+app.use("/api/connections", connectionsRouter);
 
 app.get("/health", async (req: Request, res: Response) => {
   res.status(200).json({ status: "UP", message: "Service is healthy" });
