@@ -6,11 +6,9 @@ const router = Router();
 
 router.use(protect);
 
-router.post("/:followingId/follow", asyncHandler(followsController.follow));
-router.delete(
-  "/:followingId/unfollow",
-  asyncHandler(followsController.unfollow)
-);
+router.get("/find", asyncHandler(followsController.getUsers));
+router.post("/:followingId", asyncHandler(followsController.follow));
+router.delete("/:followingId", asyncHandler(followsController.unfollow));
 
 router.get("/followers", asyncHandler(followsController.getFollowers));
 router.get("/following", asyncHandler(followsController.getFollowing));

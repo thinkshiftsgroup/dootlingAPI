@@ -4,6 +4,7 @@ import {
   unfollowUser,
   listFollowers,
   listFollowing,
+  getUsersToFollow,
 } from "@services/follows.service";
 
 const follow = async (req: Request, res: Response) => {
@@ -80,10 +81,34 @@ const getFollowing = async (req: Request, res: Response) => {
     return res.status(500).json({ message: errorMessage });
   }
 };
+const getUsers = async (req: Request, res: Response) => {
+  const currentUserId = (req as any).user?.id as string;
+  const { search, limit, skip } = req.query;
+
+  if (!currentUserId) {
+    return res.status(401).json({ message: "User not authenticated." });
+  }
+
+  try {
+    const result = await getUsersToFollow({
+      currentUserId,
+      search: search as string,
+      limit: limit ? parseInt(limit as string) : undefined,
+      skip: skip ? parseInt(skip as string) : undefined,
+    });
+
+    return res.status(200).json(result);
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : "Failed to retrieve users list.";
+    return res.status(500).json({ message: errorMessage });
+  }
+};
 
 export const followsController = {
   follow,
   unfollow,
   getFollowers,
   getFollowing,
+  getUsers,
 };
