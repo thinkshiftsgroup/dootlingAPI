@@ -23,6 +23,7 @@ interface UserDetail {
   role: string | null;
   industry: string | null;
   lastActive: Date | null;
+  totalProjects: number;
 }
 
 interface FollowListResult {
@@ -128,13 +129,18 @@ export async function listFollowers(
                 industry: true,
               },
             },
+            _count: {
+              select: {
+                projectsOwned: true,
+              },
+            },
           },
         },
       },
     });
 
     const list: UserDetail[] = followers.map((f) => {
-      const { biodata, ...user } = f.follower;
+      const { biodata, _count, ...user } = f.follower;
       return {
         ...user,
         headline: biodata?.headline ?? null,
@@ -142,6 +148,7 @@ export async function listFollowers(
         role: biodata?.role ?? null,
         industry: biodata?.industry ?? null,
         lastActive: user.lastActive ?? null,
+        totalProjects: _count.projectsOwned,
       };
     });
 
@@ -185,13 +192,18 @@ export async function listFollowing(
                 industry: true,
               },
             },
+            _count: {
+              select: {
+                projectsOwned: true,
+              },
+            },
           },
         },
       },
     });
 
     const list: UserDetail[] = following.map((f) => {
-      const { biodata, ...user } = f.following;
+      const { biodata, _count, ...user } = f.following;
       return {
         ...user,
         headline: biodata?.headline ?? null,
@@ -199,6 +211,7 @@ export async function listFollowing(
         role: biodata?.role ?? null,
         industry: biodata?.industry ?? null,
         lastActive: user.lastActive ?? null,
+        totalProjects: _count.projectsOwned,
       };
     });
 
@@ -243,6 +256,11 @@ export async function getUsersToFollow(
             industry: true,
           },
         },
+        _count: {
+          select: {
+            projectsOwned: true,
+          },
+        },
       },
       take: limit,
       skip: skip,
@@ -262,7 +280,7 @@ export async function getUsersToFollow(
       .then((follows) => new Set(follows.map((f) => f.followingId)));
 
     const list: UserWithFollowStatus[] = users.map((user) => {
-      const { biodata, ...rest } = user;
+      const { biodata, _count, ...rest } = user;
       return {
         ...rest,
         headline: biodata?.headline ?? null,
@@ -270,6 +288,7 @@ export async function getUsersToFollow(
         role: biodata?.role ?? null,
         industry: biodata?.industry ?? null,
         lastActive: rest.lastActive ?? null,
+        totalProjects: _count.projectsOwned,
         isFollowing: followingIds.has(user.id),
       };
     });
