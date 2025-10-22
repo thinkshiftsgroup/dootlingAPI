@@ -109,6 +109,7 @@ model Project {
   receiveEmailNotifications Boolean     @default(true)
   fundsRule               Boolean       @default(true) 
   isDeleted               Boolean       @default(false)
+  isEscrowed              Boolean       @default(false)
   
   amountReleased          Float         @default(0.0)
   amountPending           Float         @default(0.0) 
@@ -136,7 +137,6 @@ model Contributor {
 
   createdAt               DateTime      @default(now())
   updatedAt               DateTime      @updatedAt
-
   project                 Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
   user                    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   tasks                   Task[]
