@@ -28,16 +28,10 @@ type ProjectDetail = Project & {
 type ProjectInvitation = Project & {
   owner: { id: string; fullName: string; username: string };
 };
-
 export async function createProject(
   data: CreateProjectInput
 ): Promise<Project> {
-  const {
-    ownerId,
-    contributorIds,
-
-    ...projectData
-  } = data;
+  const { ownerId, contributorIds, ...projectData } = data;
 
   const contributorConnects: Prisma.ContributorCreateManyProjectInput[] = (
     contributorIds || []
@@ -48,20 +42,23 @@ export async function createProject(
       budgetPercentage: 0,
     }));
 
+  const projectCreateData: Prisma.ProjectCreateInput = {
+    ...projectData,
+    owner: { connect: { id: ownerId } },
+    status: "PENDING",
+  };
+
+  if (contributorConnects.length > 0) {
+    projectCreateData.contributors = {
+      createMany: {
+        data: contributorConnects,
+      },
+    };
+  }
+
   try {
     const newProject = await prisma.project.create({
-      data: {
-        ...projectData,
-
-        owner: { connect: { id: ownerId } },
-        status: "PENDING",
-
-        contributors: {
-          createMany: {
-            data: contributorConnects,
-          },
-        },
-      },
+      data: projectCreateData,
     });
     return newProject;
   } catch (error) {

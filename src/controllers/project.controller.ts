@@ -32,7 +32,7 @@ export const createProjectController = async (
 ) => {
   const { title, description, isPublic, contributorIds } = req.body;
 
-  if (!title || !isPublic || !description || !contributorIds) {
+  if (!title || !isPublic || !description) {
     return res
       .status(400)
       .json({ message: "Missing required project  fields." });
@@ -147,12 +147,10 @@ export const fetchRecentGeneralContributorsController = async (
       ownerId,
       limit
     );
-    return res
-      .status(200)
-      .json({
-        message: "Recent Contributors fetched successfully.",
-        contributors,
-      });
+    return res.status(200).json({
+      message: "Recent Contributors fetched successfully.",
+      contributors,
+    });
   } catch (error) {
     handleServiceError(res, error);
   }
