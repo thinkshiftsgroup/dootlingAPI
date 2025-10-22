@@ -103,9 +103,9 @@ model Project {
   
   status                  String        @default("INACTIVE") 
   totalBudget             Float         @default(0.0)
-  startDate               DateTime
-  deliveryDate            DateTime
-  contractClauses         String
+  startDate               DateTime?     @default(now())
+  deliveryDate            DateTime?     @default(now())
+  contractClauses         String? 
   receiveEmailNotifications Boolean     @default(true)
   fundsRule               Boolean       @default(true) 
   isDeleted               Boolean       @default(false)

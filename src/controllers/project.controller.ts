@@ -12,19 +12,15 @@ const handleServiceError = (res: Response, error: unknown) => {
     }
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       if (error.code === "P2003" || error.code === "P2025") {
-        return res
-          .status(400)
-          .json({
-            message: "Invalid data provided (e.g., non-existent user ID).",
-          });
+        return res.status(400).json({
+          message: "Invalid data provided (e.g., non-existent user ID).",
+        });
       }
     }
-    return res
-      .status(500)
-      .json({
-        message: "An unexpected server error occurred.",
-        detail: error.message,
-      });
+    return res.status(500).json({
+      message: "An unexpected server error occurred.",
+      detail: error.message,
+    });
   }
   return res.status(500).json({ message: "An unknown server error occurred." });
 };
@@ -34,47 +30,28 @@ export const createProjectController = async (
   res: Response,
   next: NextFunction
 ) => {
-  const {
-    ownerId,
-    title,
-    description,
-    isPublic,
-    contributorIds,
-    totalBudget,
-    startDate,
-    deliveryDate,
-    contractClauses,
-    fundsRule,
-  } = req.body;
+  const { title, description, isPublic, contributorIds } = req.body;
 
-  if (
-    !ownerId ||
-    !title ||
-    !totalBudget ||
-    !startDate ||
-    !deliveryDate ||
-    !contractClauses
-  ) {
+  if (!title || !isPublic || !description || !contributorIds) {
     return res
       .status(400)
-      .json({ message: "Missing required project and escrow fields." });
+      .json({ message: "Missing required project  fields." });
   }
 
   try {
+    const ownerId = (req as any).user?.id as string;
     const newProject = await projectService.createProject({
       ownerId,
       title,
       description,
       isPublic,
       contributorIds,
-      totalBudget,
-      startDate: new Date(startDate),
-      deliveryDate: new Date(deliveryDate),
-      contractClauses,
-      fundsRule,
     });
 
-    return res.status(201).json(newProject);
+    return res.status(201).json({
+      message: "Project created successfully.",
+      data: newProject,
+    });
   } catch (error) {
     handleServiceError(res, error);
   }
@@ -118,7 +95,64 @@ export const manageEscrowProjectController = async (
       projectId,
       ...updateData,
     });
-    return res.status(200).json(updatedProject);
+    return res.status(200).json({
+      message: "Project escrow details updated successfully.",
+      project: updatedProject,
+    });
+  } catch (error) {
+    handleServiceError(res, error);
+  }
+};
+
+export const fetchGeneralContributorsController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const ownerId = (req as any).user?.id as string;
+
+  if (!ownerId) {
+    return res.status(400).json({ message: "Owner ID is required." });
+  }
+
+  try {
+    const contributors = await projectService.fetchGeneralContributors(ownerId);
+    return res
+      .status(200)
+      .json({ message: "Contributors fetched successfully.", contributors });
+  } catch (error) {
+    handleServiceError(res, error);
+  }
+};
+
+export const fetchRecentGeneralContributorsController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const ownerId = (req as any).user?.id as string;
+  const limit = parseInt(req.query.limit as string) || 5;
+
+  if (!ownerId) {
+    return res.status(400).json({ message: "Owner ID is required." });
+  }
+  if (limit <= 0) {
+    return res
+      .status(400)
+      .json({ message: "Limit must be a positive number." });
+  }
+
+  try {
+    const contributors = await projectService.fetchRecentGeneralContributors(
+      ownerId,
+      limit
+    );
+    return res
+      .status(200)
+      .json({
+        message: "Recent Contributors fetched successfully.",
+        contributors,
+      });
   } catch (error) {
     handleServiceError(res, error);
   }
@@ -133,7 +167,9 @@ export const fetchAllContributorsController = async (
 
   try {
     const contributors = await projectService.fetchAllContributors(projectId);
-    return res.status(200).json(contributors);
+    return res
+      .status(200)
+      .json({ message: "Contributors fetched successfully.", contributors });
   } catch (error) {
     handleServiceError(res, error);
   }
@@ -152,7 +188,9 @@ export const fetchRecentlyAddedContributorsController = async (
       projectId,
       limit
     );
-    return res.status(200).json(contributors);
+    return res
+      .status(200)
+      .json({ message: "Contributors fetched successfully.", contributors });
   } catch (error) {
     handleServiceError(res, error);
   }
@@ -163,11 +201,13 @@ export const fetchUserOwnedProjectsController = async (
   res: Response,
   next: NextFunction
 ) => {
-  const { userId } = req.params;
+  const userId = (req as any).user?.id as string;
 
   try {
     const projects = await projectService.fetchUserOwnedProjects(userId);
-    return res.status(200).json(projects);
+    return res
+      .status(200)
+      .json({ message: "Projects fetched successfully.", data: projects });
   } catch (error) {
     handleServiceError(res, error);
   }
@@ -178,11 +218,13 @@ export const fetchUserContributorProjectsController = async (
   res: Response,
   next: NextFunction
 ) => {
-  const { userId } = req.params;
+  const userId = (req as any).user?.id as string;
 
   try {
     const projects = await projectService.fetchUserContributorProjects(userId);
-    return res.status(200).json(projects);
+    return res
+      .status(200)
+      .json({ message: "Projects fetched successfully.", data: projects });
   } catch (error) {
     handleServiceError(res, error);
   }

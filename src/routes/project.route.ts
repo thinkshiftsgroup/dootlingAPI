@@ -7,6 +7,8 @@ import {
   fetchRecentlyAddedContributorsController,
   fetchUserOwnedProjectsController,
   fetchUserContributorProjectsController,
+  fetchGeneralContributorsController,
+  fetchRecentGeneralContributorsController,
 } from "@controllers/project.controller";
 import { protect } from "@middlewares/auth.middleware";
 import asyncHandler from "@utils/asyncHandler";
@@ -22,6 +24,11 @@ router.patch(
   asyncHandler(makeProjectEscrowController)
 );
 
+router.get("/contributors", asyncHandler(fetchGeneralContributorsController));
+router.get(
+  "/contributors/recent",
+  asyncHandler(fetchRecentGeneralContributorsController)
+);
 router.get(
   "/:projectId/contributors",
   asyncHandler(fetchAllContributorsController)
@@ -32,13 +39,10 @@ router.get(
   asyncHandler(fetchRecentlyAddedContributorsController)
 );
 
-router.get(
-  "/users/:userId/projects/owned",
-  asyncHandler(fetchUserOwnedProjectsController)
-);
+router.get("/", asyncHandler(fetchUserOwnedProjectsController));
 
 router.get(
-  "/users/:userId/projects/contributing",
+  "/contributing",
   asyncHandler(fetchUserContributorProjectsController)
 );
 

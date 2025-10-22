@@ -9,6 +9,7 @@ import { profileRouter } from "@routes/profile.route";
 import { followsRouter } from "@routes/follows.router";
 import { connectionsRouter } from "@routes/serviceConnection.router";
 import { projectRouter } from "@routes/project.route";
+import { homeRouter } from "@routes/home.route";
 const app = express();
 
 const allowedOrigins = [
@@ -35,6 +36,7 @@ app.use("/api/profile", profileRouter);
 app.use("/api/follows", followsRouter);
 app.use("/api/connections", connectionsRouter);
 app.use("/api/projects", projectRouter);
+app.use("/api/home", homeRouter);
 
 app.get("/health", async (req: Request, res: Response) => {
   res.status(200).json({ status: "UP", message: "Service is healthy" });
