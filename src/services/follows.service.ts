@@ -7,6 +7,45 @@ interface FollowInput {
   followingId: string;
 }
 
+interface FollowListInput {
+  userId: string;
+  limit?: number;
+  skip?: number;
+}
+
+interface UserDetail {
+  id: string;
+  username: string;
+  fullName: string;
+  profilePhotoUrl: string | null;
+  headline: string | null;
+  country: string | null;
+  role: string | null;
+  industry: string | null;
+  lastActive: Date | null;
+}
+
+interface FollowListResult {
+  list: UserDetail[];
+  count: number;
+}
+
+type UserWithFollowStatus = UserDetail & {
+  isFollowing: boolean;
+};
+
+interface UsersToFollowInput {
+  currentUserId: string;
+  search?: string;
+  limit?: number;
+  skip?: number;
+}
+
+interface UsersToFollowResult {
+  list: UserWithFollowStatus[];
+  count: number;
+}
+
 export async function followUser(data: FollowInput): Promise<Follows> {
   if (data.followerId === data.followingId) {
     throw new Error("A user cannot follow themselves.");
@@ -54,22 +93,25 @@ export async function unfollowUser(data: FollowInput): Promise<boolean> {
     throw new Error(`Failed to unfollow user ${data.followingId}.`);
   }
 }
-interface FollowListResult {
-  list: Array<{
-    id: string;
-    username: string;
-    fullName: string;
-    profilePhotoUrl: string | null;
-  }>;
-  count: number;
-}
 
-export async function listFollowers(userId: string): Promise<FollowListResult> {
+export async function listFollowers(
+  data: FollowListInput
+): Promise<FollowListResult> {
+  const { userId, limit = 10, skip = 0 } = data;
+
   try {
+    const count = await prisma.follows.count({
+      where: {
+        followingId: userId,
+      },
+    });
+
     const followers = await prisma.follows.findMany({
       where: {
         followingId: userId,
       },
+      take: limit,
+      skip: skip,
       include: {
         follower: {
           select: {
@@ -77,13 +119,31 @@ export async function listFollowers(userId: string): Promise<FollowListResult> {
             username: true,
             fullName: true,
             profilePhotoUrl: true,
+            lastActive: true,
+            biodata: {
+              select: {
+                headline: true,
+                country: true,
+                role: true,
+                industry: true,
+              },
+            },
           },
         },
       },
     });
 
-    const list = followers.map((f) => f.follower);
-    const count = list.length;
+    const list: UserDetail[] = followers.map((f) => {
+      const { biodata, ...user } = f.follower;
+      return {
+        ...user,
+        headline: biodata?.headline ?? null,
+        country: biodata?.country ?? null,
+        role: biodata?.role ?? null,
+        industry: biodata?.industry ?? null,
+        lastActive: user.lastActive ?? null,
+      };
+    });
 
     return { list, count };
   } catch (error) {
@@ -91,12 +151,24 @@ export async function listFollowers(userId: string): Promise<FollowListResult> {
   }
 }
 
-export async function listFollowing(userId: string): Promise<FollowListResult> {
+export async function listFollowing(
+  data: FollowListInput
+): Promise<FollowListResult> {
+  const { userId, limit = 10, skip = 0 } = data;
+
   try {
+    const count = await prisma.follows.count({
+      where: {
+        followerId: userId,
+      },
+    });
+
     const following = await prisma.follows.findMany({
       where: {
         followerId: userId,
       },
+      take: limit,
+      skip: skip,
       include: {
         following: {
           select: {
@@ -104,13 +176,31 @@ export async function listFollowing(userId: string): Promise<FollowListResult> {
             username: true,
             fullName: true,
             profilePhotoUrl: true,
+            lastActive: true,
+            biodata: {
+              select: {
+                headline: true,
+                country: true,
+                role: true,
+                industry: true,
+              },
+            },
           },
         },
       },
     });
 
-    const list = following.map((f) => f.following);
-    const count = list.length;
+    const list: UserDetail[] = following.map((f) => {
+      const { biodata, ...user } = f.following;
+      return {
+        ...user,
+        headline: biodata?.headline ?? null,
+        country: biodata?.country ?? null,
+        role: biodata?.role ?? null,
+        industry: biodata?.industry ?? null,
+        lastActive: user.lastActive ?? null,
+      };
+    });
 
     return { list, count };
   } catch (error) {
@@ -118,24 +208,6 @@ export async function listFollowing(userId: string): Promise<FollowListResult> {
   }
 }
 
-interface UsersToFollowInput {
-  currentUserId: string;
-  search?: string;
-  limit?: number;
-  skip?: number;
-}
-
-type UserWithFollowStatus = Pick<
-  User,
-  "id" | "username" | "fullName" | "profilePhotoUrl"
-> & {
-  isFollowing: boolean;
-};
-
-interface UsersToFollowResult {
-  list: UserWithFollowStatus[];
-  count: number;
-}
 export async function getUsersToFollow(
   data: UsersToFollowInput
 ): Promise<UsersToFollowResult> {
@@ -162,6 +234,15 @@ export async function getUsersToFollow(
         username: true,
         fullName: true,
         profilePhotoUrl: true,
+        lastActive: true,
+        biodata: {
+          select: {
+            headline: true,
+            country: true,
+            role: true,
+            industry: true,
+          },
+        },
       },
       take: limit,
       skip: skip,
@@ -180,10 +261,18 @@ export async function getUsersToFollow(
       })
       .then((follows) => new Set(follows.map((f) => f.followingId)));
 
-    const list: UserWithFollowStatus[] = users.map((user) => ({
-      ...user,
-      isFollowing: followingIds.has(user.id),
-    }));
+    const list: UserWithFollowStatus[] = users.map((user) => {
+      const { biodata, ...rest } = user;
+      return {
+        ...rest,
+        headline: biodata?.headline ?? null,
+        country: biodata?.country ?? null,
+        role: biodata?.role ?? null,
+        industry: biodata?.industry ?? null,
+        lastActive: rest.lastActive ?? null,
+        isFollowing: followingIds.has(user.id),
+      };
+    });
 
     return { list, count };
   } catch (error) {
