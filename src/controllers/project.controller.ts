@@ -32,7 +32,7 @@ export const createProjectController = async (
 ) => {
   const { title, description, isPublic, contributorIds } = req.body;
 
-  if (!title || !isPublic || !description) {
+  if (title == null || description == null || isPublic == null) {
     return res
       .status(400)
       .json({ message: "Missing required project  fields." });

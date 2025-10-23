@@ -78,15 +78,14 @@ export async function makeProjectEscrow(
 ): Promise<Project> {
   try {
     const updatedProject = await prisma.project.update({
-      where: { id: data.projectId },
+      where: {
+        id: data.projectId,
+        isEscrowed: false,
+      },
       data: {
         isEscrowed: true,
       } as Prisma.ProjectUpdateInput,
     });
-
-    if (!updatedProject) {
-      throw new Error("Project not found.");
-    }
 
     return updatedProject;
   } catch (error) {
@@ -94,7 +93,20 @@ export async function makeProjectEscrow(
       error instanceof Prisma.PrismaClientKnownRequestError &&
       error.code === "P2025"
     ) {
-      throw new Error("Project not found.");
+      const project = await prisma.project.findUnique({
+        where: { id: data.projectId },
+        select: { isEscrowed: true },
+      });
+
+      if (!project) {
+        throw new Error("Project not found.");
+      } else if (project.isEscrowed) {
+        throw new Error(
+          "Project is already marked as escrowed and cannot be updated again."
+        );
+      } else {
+        throw new Error("Project not found or update condition not met.");
+      }
     }
     throw new Error(
       `Failed to mark project as escrow: ${
@@ -190,18 +202,51 @@ export async function fetchRecentlyAddedContributors(
   }
 }
 
+type ProjectWithContributorCount = Project & {
+  _count: {
+    contributors: number;
+  };
+};
+
 export async function fetchUserOwnedProjects(
   userId: string
-): Promise<Project[]> {
+): Promise<ProjectWithContributorCount[]> {
   try {
     const projects = await prisma.project.findMany({
       where: { ownerId: userId, isDeleted: false },
+      select: {
+        id: true,
+        ownerId: true,
+        title: true,
+        description: true,
+        isPublic: true,
+        status: true,
+        totalBudget: true,
+        startDate: true,
+        deliveryDate: true,
+        contractClauses: true,
+        receiveEmailNotifications: true,
+        fundsRule: true,
+        isDeleted: true,
+        isEscrowed: true,
+        amountReleased: true,
+        amountPending: true,
+        completionPercentage: true,
+        createdAt: true,
+        updatedAt: true,
+        _count: {
+          select: {
+            contributors: true,
+          },
+        },
+      },
       orderBy: {
         createdAt: "desc",
       },
     });
-    return projects;
+    return projects as unknown as ProjectWithContributorCount[];
   } catch (error) {
+    console.error("Error fetching user-owned projects:", error);
     throw new Error("Failed to fetch user-owned projects.");
   }
 }
