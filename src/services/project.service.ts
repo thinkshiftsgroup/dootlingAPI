@@ -1,5 +1,11 @@
-import { PrismaClient, Prisma, Project, Contributor } from "@prisma/client";
-
+import {
+  PrismaClient,
+  Prisma,
+  Project,
+  Contributor,
+  PaymentAudit,
+} from "@prisma/client";
+import { ManageEscrowProjectInput, ContributorUpdateItem } from "src/types";
 const prisma = new PrismaClient();
 
 interface CreateProjectInput {
@@ -8,16 +14,6 @@ interface CreateProjectInput {
   description: string;
   isPublic: boolean;
   contributorIds?: string[];
-}
-interface ManageEscrowProjectInput {
-  projectId: string;
-  totalBudget?: number;
-  startDate?: Date;
-  deliveryDate?: Date;
-  contractClauses?: string;
-  fundsRule?: boolean;
-  status?: string;
-  isDeleted?: boolean;
 }
 
 type ProjectDetail = Project & {
@@ -77,10 +73,24 @@ export async function makeProjectEscrow(
   data: MakeEscrowTrueInput
 ): Promise<Project> {
   try {
+    const project = await prisma.project.findUnique({
+      where: { id: data.projectId },
+      select: { isEscrowed: true },
+    });
+
+    if (!project) {
+      throw new Error("Project not found.");
+    }
+
+    if (project.isEscrowed) {
+      throw new Error(
+        "Project is already marked as escrowed and cannot be updated again."
+      );
+    }
+
     const updatedProject = await prisma.project.update({
       where: {
         id: data.projectId,
-        isEscrowed: false,
       },
       data: {
         isEscrowed: true,
@@ -93,21 +103,9 @@ export async function makeProjectEscrow(
       error instanceof Prisma.PrismaClientKnownRequestError &&
       error.code === "P2025"
     ) {
-      const project = await prisma.project.findUnique({
-        where: { id: data.projectId },
-        select: { isEscrowed: true },
-      });
-
-      if (!project) {
-        throw new Error("Project not found.");
-      } else if (project.isEscrowed) {
-        throw new Error(
-          "Project is already marked as escrowed and cannot be updated again."
-        );
-      } else {
-        throw new Error("Project not found or update condition not met.");
-      }
+      throw new Error("Project not found.");
     }
+
     throw new Error(
       `Failed to mark project as escrow: ${
         error instanceof Error ? error.message : "unknown error"
@@ -115,29 +113,120 @@ export async function makeProjectEscrow(
     );
   }
 }
+function processContributors(
+  items: ContributorUpdateItem[]
+): Prisma.ProjectUpdateInput["contributors"] {
+  const payload: Prisma.ProjectUpdateInput["contributors"] = {};
+
+  for (const item of items) {
+    if (item.action === "create") {
+      if (!item.userId || item.budgetPercentage === undefined) {
+        throw new Error("Create action requires userId and budgetPercentage.");
+      }
+
+      payload.create = (payload.create as any) || [];
+
+      (payload.create as Prisma.ContributorCreateWithoutProjectInput[]).push({
+        user: {
+          connect: {
+            id: item.userId as string,
+          },
+        },
+        role: item.role,
+        budgetPercentage: item.budgetPercentage,
+        releasePercentage: item.releasePercentage,
+      });
+    } else if (item.action === "update") {
+      if (!item.id) {
+        throw new Error("Update action requires contributor id.");
+      }
+
+      payload.update = (payload.update as any) || [];
+
+      (
+        payload.update as {
+          where: { id: string };
+          data: Prisma.ContributorUpdateWithoutProjectInput;
+        }[]
+      ).push({
+        where: { id: item.id },
+        data: {
+          role: item.role,
+          budgetPercentage: item.budgetPercentage,
+          releasePercentage: item.releasePercentage,
+        },
+      });
+    } else if (item.action === "delete") {
+      if (!item.id) {
+        throw new Error("Delete action requires contributor id.");
+      }
+
+      payload.delete = (payload.delete as any) || [];
+
+      (payload.delete as { id: string }[]).push({ id: item.id });
+    }
+  }
+  return payload;
+}
 export async function manageEscrowProject(
   data: ManageEscrowProjectInput
 ): Promise<Project> {
-  const { projectId, ...updateData } = data;
+  const { projectId, contributors, ...projectUpdateData } = data;
 
-  if (Object.keys(updateData).length === 0) {
+  const contributorPayload = contributors
+    ? processContributors(contributors)
+    : {};
+
+  const hasContributorUpdates =
+    contributorPayload && Object.keys(contributorPayload).length > 0;
+
+  const updatePayload: Prisma.ProjectUpdateInput = {
+    ...projectUpdateData,
+    ...(hasContributorUpdates && { contributors: contributorPayload }),
+  };
+
+  if (
+    Object.keys(projectUpdateData).length === 0 &&
+    (!contributorPayload || Object.keys(contributorPayload).length === 0)
+  ) {
     throw new Error("No fields provided for update.");
   }
 
   try {
+    const existingProject = await prisma.project.findUnique({
+      where: { id: projectId },
+      select: { id: true },
+    });
+
+    if (!existingProject) {
+      throw new Error("Project not found.");
+    }
+
     const updatedProject = await prisma.project.update({
       where: { id: projectId },
-      data: updateData,
+      data: updatePayload,
+      include: {
+        contributors: true,
+      },
     });
 
     return updatedProject;
   } catch (error) {
+    if (error instanceof Error && error.message === "Project not found") {
+      throw error;
+    }
+
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&
       error.code === "P2025"
     ) {
-      throw new Error("Project not found.");
+      throw new Error("Project not found or concurrent modification failed.");
     }
+
+    if (error instanceof Prisma.PrismaClientValidationError) {
+      throw new Error(`Invalid update data provided: ${error.message}`);
+    }
+
     throw new Error(
       `Failed to update project: ${
         error instanceof Error ? error.message : "unknown error"
@@ -146,6 +235,58 @@ export async function manageEscrowProject(
   }
 }
 
+export type ProjectDetails = Project & {
+  contributors: (Contributor & {
+    user: {
+      id: string;
+      email: string;
+      fullName: string;
+      profilePhotoUrl: string | null;
+    };
+  })[];
+  payments: PaymentAudit[];
+};
+
+export async function getProjectDetails(
+  projectId: string
+): Promise<ProjectDetails> {
+  try {
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
+      include: {
+        contributors: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                email: true,
+                fullName: true,
+                profilePhotoUrl: true,
+              },
+            },
+          },
+        },
+        payments: true,
+      },
+    });
+
+    if (!project) {
+      throw new Error("Project not found.");
+    }
+
+    return project as ProjectDetails;
+  } catch (error) {
+    if (error instanceof Error && error.message === "Project not found") {
+      throw error;
+    }
+
+    throw new Error(
+      `Failed to fetch project details: ${
+        error instanceof Error ? error.message : "unknown error"
+      }`
+    );
+  }
+}
 export async function fetchAllContributors(
   projectId: string
 ): Promise<Contributor[]> {

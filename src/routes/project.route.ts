@@ -9,6 +9,7 @@ import {
   fetchUserContributorProjectsController,
   fetchGeneralContributorsController,
   fetchRecentGeneralContributorsController,
+  getProjectDetailsController,
 } from "@controllers/project.controller";
 import { protect } from "@middlewares/auth.middleware";
 import asyncHandler from "@utils/asyncHandler";
@@ -40,7 +41,7 @@ router.get(
 );
 
 router.get("/", asyncHandler(fetchUserOwnedProjectsController));
-
+router.get("/:projectId/details", asyncHandler(getProjectDetailsController));
 router.get(
   "/contributing",
   asyncHandler(fetchUserContributorProjectsController)

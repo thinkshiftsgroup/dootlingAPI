@@ -57,6 +57,29 @@ export const createProjectController = async (
   }
 };
 
+export const getProjectDetailsController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const projectId = req.params.projectId as string;
+
+    if (!projectId) {
+      return res.status(400).json({ message: "Project ID is required." });
+    }
+
+    const projectDetails = await projectService.getProjectDetails(projectId);
+
+    return res.status(200).json({
+      message: "Project details fetched successfully.",
+      data: projectDetails,
+    });
+  } catch (error) {
+    handleServiceError(res, error);
+  }
+};
+
 export const makeProjectEscrowController = async (
   req: Request,
   res: Response,
