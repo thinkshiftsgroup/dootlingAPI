@@ -5,6 +5,7 @@ import {
   MilestoneUpdateItem,
   GalleryItemCreateInput,
   fetchProjectMilestones,
+  createProjectMilestones,
   ProjectWithMilestones,
 } from "@services/project.milestone.service";
 import { uploadMultipleToCloudinary } from "../utils/cloudinary";
@@ -117,7 +118,7 @@ export const createMilestoneWithFiles = async (req: Request, res: Response) => {
       milestones: [serviceMilestoneItem],
     };
 
-    const updatedProject = await manageProjectMilestones(serviceInput);
+    const updatedProject = await createProjectMilestones(serviceInput);
 
     return res
       .status(201)
