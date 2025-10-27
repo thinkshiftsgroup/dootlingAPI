@@ -11,6 +11,14 @@ declare namespace Express {
 declare global {
   namespace Express {
     interface Request {
+      files: FileGroups;
+      body: FlatMilestoneBody;
+    }
+  }
+}
+declare global {
+  namespace Express {
+    interface Request {
       user?: {
         id: string;
         email: string;

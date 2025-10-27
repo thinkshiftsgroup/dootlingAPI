@@ -1,4 +1,10 @@
-import { PrismaClient, Project, Milestone, Prisma } from "@prisma/client";
+import {
+  PrismaClient,
+  Project,
+  Milestone,
+  Prisma,
+  GalleryItem,
+} from "@prisma/client";
 
 export type GalleryItemCreateInput = {
   url: string;
@@ -20,7 +26,12 @@ export type ManageMilestonesInput = {
   userId: string;
   milestones: MilestoneUpdateItem[];
 };
-
+export type FetchMilestonesInput = {
+  projectId: string;
+};
+export type ProjectWithMilestones = Project & {
+  milestones: (Milestone & { galleryItems: GalleryItem[] })[];
+};
 const prisma = new PrismaClient();
 
 function processMilestoneUpdates(
@@ -144,6 +155,53 @@ export async function manageProjectMilestones(
 
     throw new Error(
       `Failed to manage project milestones: ${
+        error instanceof Error ? error.message : "unknown error"
+      }`
+    );
+  }
+}
+
+export async function fetchProjectMilestones(
+  data: FetchMilestonesInput
+): Promise<ProjectWithMilestones> {
+  const { projectId } = data;
+
+  try {
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
+      include: {
+        milestones: {
+          include: {
+            galleryItems: true,
+          },
+          orderBy: {
+            dueDate: "asc",
+          },
+        },
+      },
+    });
+
+    if (!project) {
+      throw new Error("Project not found.");
+    }
+
+    return project as ProjectWithMilestones;
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("Project not found")) {
+      throw error;
+    }
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2025"
+    ) {
+      throw new Error("Related record (Project) not found.");
+    }
+    if (error instanceof Prisma.PrismaClientValidationError) {
+      throw new Error(`Invalid query data provided: ${error.message}`);
+    }
+
+    throw new Error(
+      `Failed to fetch project milestones: ${
         error instanceof Error ? error.message : "unknown error"
       }`
     );
