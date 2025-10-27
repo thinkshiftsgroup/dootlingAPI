@@ -1,5 +1,5 @@
 import FormData from "form-data";
-import fetch from "node-fetch";
+// import fetch from "node-fetch";
 import { MulterFile } from "@controllers/project.milestone.controller";
 export type CloudinaryResourceTypes = "image" | "video" | "raw" | "auto";
 
