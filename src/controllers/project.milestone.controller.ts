@@ -70,7 +70,8 @@ export const createMilestoneWithFiles = async (req: Request, res: Response) => {
     }
 
     const body = req.body as FlatMilestoneBody;
-    const files = req.files as FileGroups;
+
+    const files = (req.files as FileGroups) || {};
 
     const rawImages = files.image || [];
     const rawFiles = files.file || [];
@@ -79,12 +80,8 @@ export const createMilestoneWithFiles = async (req: Request, res: Response) => {
     let processedGalleryItems: GalleryItemCreateInput[] = [];
 
     if (allRawFiles.length > 0) {
-      const filesToUpload: File[] = allRawFiles.map(
-        (item) => item as unknown as File
-      );
       const fileTypes: string[] = allRawFiles.map((item) => item.mimetype);
-
-      const uploadedUrls = await uploadMultipleToCloudinary(filesToUpload);
+      const uploadedUrls = await uploadMultipleToCloudinary(allRawFiles);
 
       processedGalleryItems = uploadedUrls.map((url, index) => ({
         url: url,
@@ -196,13 +193,8 @@ export const manageMilestoneWithFiles = async (req: Request, res: Response) => {
       const allRawFiles: MulterFile[] = [...rawImages, ...rawFiles];
 
       if (allRawFiles.length > 0) {
-        const filesToUpload: File[] = allRawFiles.map(
-          (item) => item as unknown as File
-        );
         const fileTypes: string[] = allRawFiles.map((item) => item.mimetype);
-
-        const uploadedUrls = await uploadMultipleToCloudinary(filesToUpload);
-
+        const uploadedUrls = await uploadMultipleToCloudinary(allRawFiles);
         processedGalleryItems = uploadedUrls.map((url, index) => ({
           url: url,
           fileType: fileTypes[index],
