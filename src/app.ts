@@ -10,6 +10,7 @@ import { followsRouter } from "@routes/follows.router";
 import { connectionsRouter } from "@routes/serviceConnection.router";
 import { projectRouter } from "@routes/project.route";
 import { milestonesRouter } from "@routes/project.milestone.route";
+import { tasksRouter } from "@routes/project.task.route";
 import { homeRouter } from "@routes/home.route";
 const app = express();
 
@@ -38,6 +39,7 @@ app.use("/api/follows", followsRouter);
 app.use("/api/connections", connectionsRouter);
 app.use("/api/projects", projectRouter);
 app.use("/api/milestones", milestonesRouter);
+app.use("/api/tasks", tasksRouter);
 app.use("/api/home", homeRouter);
 
 app.get("/health", async (req: Request, res: Response) => {
