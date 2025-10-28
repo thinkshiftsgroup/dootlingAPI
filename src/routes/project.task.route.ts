@@ -18,7 +18,7 @@ const taskUploads = upload.fields([
   { name: "image", maxCount: 10 },
   { name: "file", maxCount: 20 },
 ]);
-router.get("/milestones/:milestoneId/tasks", asyncHandler(fetchTasks));
+router.get("/milestones/:milestoneId", asyncHandler(fetchTasks));
 
 router.post(
   "/projects/:projectId/milestones/:milestoneId",
