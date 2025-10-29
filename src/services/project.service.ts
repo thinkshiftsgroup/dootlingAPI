@@ -373,6 +373,7 @@ export async function fetchUserOwnedProjects(
         isDeleted: true,
         isEscrowed: true,
         amountReleased: true,
+        projectImageUrl: true,
         amountPending: true,
         completionPercentage: true,
         createdAt: true,
