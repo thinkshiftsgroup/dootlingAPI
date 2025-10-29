@@ -2,6 +2,25 @@ import { Request, Response, NextFunction } from "express";
 import * as projectService from "@services/project.service";
 import { Prisma } from "@prisma/client";
 
+import { uploadMultipleToCloudinary } from "../utils/cloudinary";
+
+export type MulterFile = {
+  fieldname: string;
+  originalname: string;
+  encoding: string;
+  mimetype: string;
+  size: number;
+  destination: string;
+  filename: string;
+  path: string;
+  buffer: Buffer;
+};
+
+export interface FileGroups {
+  image?: MulterFile[];
+  file?: MulterFile[];
+}
+
 const handleServiceError = (res: Response, error: unknown) => {
   if (error instanceof Error) {
     if (error.message.includes("Project not found")) {
@@ -25,27 +44,57 @@ const handleServiceError = (res: Response, error: unknown) => {
   return res.status(500).json({ message: "An unknown server error occurred." });
 };
 
-export const createProjectController = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  const { title, description, isPublic, contributorIds } = req.body;
+export const createProjectController = async (req: Request, res: Response) => {
+  const { title, description } = req.body;
 
-  if (title == null || description == null || isPublic == null) {
-    return res
-      .status(400)
-      .json({ message: "Missing required project  fields." });
+  if (title == null || description == null || req.body.isPublic == null) {
+    return res.status(400).json({
+      message:
+        "Missing required project fields: title, description, or isPublic.",
+    });
   }
 
   try {
     const ownerId = (req as any).user?.id as string;
+
+    const isPublic = req.body.isPublic === "true";
+
+    let contributorIds: string[] | undefined;
+    if (req.body.contributorIds) {
+      try {
+        contributorIds = JSON.parse(
+          req.body.contributorIds as string
+        ) as string[];
+      } catch (e) {
+        return res.status(400).json({
+          message:
+            "Invalid format for contributorIds. Expected a JSON array string.",
+        });
+      }
+    }
+
+    const files = (req.files as FileGroups) || {};
+    const rawImages = files.image || [];
+
+    let projectImageUrl: string | undefined;
+
+    if (rawImages.length > 0) {
+      const primaryImage: MulterFile = rawImages[0];
+
+      const uploadedUrls = await uploadMultipleToCloudinary([primaryImage]);
+
+      if (uploadedUrls.length > 0) {
+        projectImageUrl = uploadedUrls[0];
+      }
+    }
+
     const newProject = await projectService.createProject({
       ownerId,
       title,
       description,
       isPublic,
       contributorIds,
+      projectImageUrl: projectImageUrl,
     });
 
     return res.status(201).json({
@@ -53,7 +102,20 @@ export const createProjectController = async (
       data: newProject,
     });
   } catch (error) {
-    handleServiceError(res, error);
+    const err = error as Error;
+
+    if (
+      err.message.includes("Cloudinary") ||
+      err.message.includes("Failed to upload")
+    ) {
+      return res.status(500).json({ message: `Upload error: ${err.message}` });
+    }
+
+    console.error("Create Project Controller Error:", err);
+
+    return res.status(500).json({
+      message: "An unexpected error occurred during project creation.",
+    });
   }
 };
 
@@ -109,24 +171,51 @@ export const manageEscrowProjectController = async (
   const { projectId } = req.params;
   const updateData = req.body;
 
-  if (Object.keys(updateData).length === 0) {
-    return res.status(400).json({ message: "No fields provided for update." });
-  }
-
   try {
+    const files = (req.files as FileGroups) || {};
+    const rawImages = files.image || [];
+
+    let projectImageUrl: string | undefined;
+
+    if (rawImages.length > 0) {
+      const primaryImage: MulterFile = rawImages[0];
+
+      const uploadedUrls = await uploadMultipleToCloudinary([primaryImage]);
+
+      if (uploadedUrls.length > 0) {
+        projectImageUrl = uploadedUrls[0];
+        updateData.projectImageUrl = projectImageUrl;
+      }
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return res
+        .status(400)
+        .json({ message: "No fields provided for update." });
+    }
+
     const updatedProject = await projectService.manageEscrowProject({
       projectId,
       ...updateData,
     });
+
     return res.status(200).json({
       message: "Project escrow details updated successfully.",
       project: updatedProject,
     });
   } catch (error) {
+    const err = error as Error;
+
+    if (
+      err.message.includes("Cloudinary") ||
+      err.message.includes("Failed to upload")
+    ) {
+      return res.status(500).json({ message: `Upload error: ${err.message}` });
+    }
+
     handleServiceError(res, error);
   }
 };
-
 export const fetchGeneralContributorsController = async (
   req: Request,
   res: Response,

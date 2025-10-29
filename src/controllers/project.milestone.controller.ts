@@ -30,6 +30,7 @@ export interface FileGroups {
 export interface FlatMilestoneBody {
   title: string;
   releasePercentage: string;
+  releaseDate: string;
   dueDate: string;
   description?: string;
 }
@@ -94,6 +95,7 @@ export const createMilestoneWithFiles = async (req: Request, res: Response) => {
       action: "create",
       title: body.title,
       releasePercentage: parseInt(body.releasePercentage, 10),
+      releaseDate: new Date(body.releaseDate),
       dueDate: new Date(body.dueDate),
       description: body.description,
       galleryItemsToCreate: processedGalleryItems,

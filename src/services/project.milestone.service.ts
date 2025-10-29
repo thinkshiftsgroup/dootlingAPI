@@ -16,6 +16,7 @@ export type MilestoneUpdateItem = {
   action: "create" | "update" | "delete";
   title?: string;
   releasePercentage?: number;
+  releaseDate?: Date;
   dueDate?: Date;
   description?: string;
   galleryItemsToCreate?: GalleryItemCreateInput[];

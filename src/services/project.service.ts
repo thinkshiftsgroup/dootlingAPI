@@ -14,6 +14,7 @@ interface CreateProjectInput {
   description: string;
   isPublic: boolean;
   contributorIds?: string[];
+  projectImageUrl?: string;
 }
 
 type ProjectDetail = Project & {
