@@ -280,7 +280,17 @@ export async function fetchMilestoneTasks(
       include: {
         tasks: {
           include: {
-            contributor: true,
+            contributor: {
+              select: {
+                user: {
+                  select: {
+                    id: true,
+                    fullName: true,
+                    profilePhotoUrl: true,
+                  },
+                },
+              },
+            },
             galleryItems: true,
           },
           orderBy: {
