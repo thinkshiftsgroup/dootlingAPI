@@ -165,10 +165,8 @@ model Milestone {
   dueDate                 DateTime
   description             String?
   releaseDate             DateTime?
-  
   createdAt               DateTime      @default(now())
   updatedAt               DateTime      @updatedAt
-  
   project                 Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
   tasks                   Task[]
   galleryItems            GalleryItem[] @relation("MilestoneGallery")
@@ -182,14 +180,11 @@ model Task {
   priority                String        @default("MEDIUM")
   dueDate                 DateTime
   description             String?
-  
   percentageOfProject     Float         
   percentageToRelease     Float         
   releaseDate             DateTime?
-  
   createdAt               DateTime      @default(now())
   updatedAt               DateTime      @updatedAt
-  
   milestone               Milestone     @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
   contributor             Contributor   @relation(fields: [contributorId], references: [id])
   galleryItems            GalleryItem[] @relation("TaskGallery")
@@ -213,13 +208,10 @@ model GalleryItem {
   url                     String
   fileType                String        
   uploadedByUserId        String        @db.ObjectId
-
   milestoneId             String?       @db.ObjectId
   taskId                  String?       @db.ObjectId
-
   project                 Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
   milestone               Milestone?    @relation("MilestoneGallery", fields: [milestoneId], references: [id])
   task                    Task?         @relation("TaskGallery", fields: [taskId], references: [id])
-
   createdAt               DateTime      @default(now())
 }

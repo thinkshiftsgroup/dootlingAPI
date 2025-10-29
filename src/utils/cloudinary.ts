@@ -1,6 +1,7 @@
+import axios from "axios";
 import FormData from "form-data";
-// import fetch from "node-fetch";
 import { MulterFile } from "@controllers/project.milestone.controller";
+
 export type CloudinaryResourceTypes = "image" | "video" | "raw" | "auto";
 
 interface CloudinaryUploadResponse {
@@ -19,9 +20,6 @@ export const uploadToCloudinary = async (
       "Missing CLOUDINARY_CLOUD_NAME or UPLOAD_PRESET environment variables."
     );
   }
-  console.log("CLOUD_NAME Value:", CLOUD_NAME);
-  console.log("UPLOAD_PRESET Value:", UPLOAD_PRESET);
-  console.log("File Original Name:", file);
 
   const formData = new FormData();
 
@@ -33,29 +31,31 @@ export const uploadToCloudinary = async (
   formData.append("upload_preset", UPLOAD_PRESET);
 
   try {
-    const response = await fetch(
-      `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`,
+    const uploadUrl = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/${resourceType}/upload`;
+
+    const response = await axios.post<CloudinaryUploadResponse>(
+      uploadUrl,
+      formData,
       {
-        method: "POST",
-        body: formData,
-        headers: {
-          ...formData.getHeaders(),
-        },
+        headers: formData.getHeaders(),
+        timeout: 60000,
       }
     );
 
-    if (!response.ok) {
-      const errorText = await response.text();
+    return response.data.secure_url;
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response) {
+      const errorData = error.response.data as { error?: { message: string } };
       throw new Error(
-        `Upload failed. Cloudinary response: ${errorText.substring(0, 100)}...`
+        `Upload failed. Cloudinary message: ${
+          errorData.error?.message || "Unknown network error."
+        }`
       );
     }
 
-    const data = (await response.json()) as CloudinaryUploadResponse;
-    return data.secure_url;
-  } catch (error) {
-    console.error("Cloudinary upload error:", error);
-    throw error;
+    throw new Error(
+      "Failed to connect to or receive response from Cloudinary."
+    );
   }
 };
 
