@@ -15,10 +15,26 @@ import { protect } from "@middlewares/auth.middleware";
 import asyncHandler from "@utils/asyncHandler";
 
 const router = Router();
-router.use(protect);
-router.post("/", asyncHandler(createProjectController));
+import multer from "multer";
 
-router.patch("/:projectId/manage", asyncHandler(manageEscrowProjectController));
+router.use(protect);
+
+const storage = multer.memoryStorage();
+const upload = multer({ storage: storage });
+
+const projectUploads = upload.fields([
+  { name: "image", maxCount: 10 },
+  { name: "file", maxCount: 20 },
+]);
+
+router.use(protect);
+router.post("/", projectUploads, asyncHandler(createProjectController));
+
+router.patch(
+  "/:projectId/manage",
+  projectUploads,
+  asyncHandler(manageEscrowProjectController)
+);
 
 router.patch(
   "/:projectId/escrow-activate",
