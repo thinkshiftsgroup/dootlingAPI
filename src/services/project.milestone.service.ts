@@ -61,6 +61,7 @@ function processMilestoneUpdates(
       releasePercentage: item.releasePercentage,
       dueDate: item.dueDate,
       description: item.description,
+      releaseDate: item.releaseDate,
     };
 
     if (item.galleryItemsToCreate && item.galleryItemsToCreate.length > 0) {
@@ -92,6 +93,7 @@ function processMilestoneUpdates(
       releasePercentage: item.releasePercentage,
       dueDate: item.dueDate,
       description: item.description,
+      releaseDate: item.releaseDate,
     };
 
     if (item.galleryItemsToCreate && item.galleryItemsToCreate.length > 0) {

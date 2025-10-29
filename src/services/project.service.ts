@@ -121,7 +121,7 @@ function processContributors(
 
   for (const item of items) {
     if (item.action === "create") {
-      if (!item.userId || item.budgetPercentage === undefined) {
+      if (!item.userId) {
         throw new Error("Create action requires userId and budgetPercentage.");
       }
 
@@ -134,7 +134,8 @@ function processContributors(
           },
         },
         role: item.role,
-        budgetPercentage: item.budgetPercentage,
+        budgetPercentage:
+          item.budgetPercentage !== undefined ? item.budgetPercentage : 0.0,
         releasePercentage: item.releasePercentage,
       });
     } else if (item.action === "update") {
