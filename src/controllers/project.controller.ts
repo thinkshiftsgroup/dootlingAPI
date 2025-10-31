@@ -187,6 +187,20 @@ export const manageEscrowProjectController = async (
       }
     }
 
+    if (
+      Object.prototype.hasOwnProperty.call(updateData, "contributors") &&
+      typeof updateData.contributors === "string"
+    ) {
+      try {
+        updateData.contributors = JSON.parse(updateData.contributors);
+      } catch (e) {
+        return res.status(400).json({
+          message:
+            "Invalid JSON format for contributors array. Must be a valid JSON string.",
+        });
+      }
+    }
+
     if (Object.prototype.hasOwnProperty.call(updateData, "isPublic")) {
       updateData.isPublic =
         updateData.isPublic === "true" || updateData.isPublic === 1;

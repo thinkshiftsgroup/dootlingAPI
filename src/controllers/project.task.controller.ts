@@ -39,7 +39,6 @@ export const manageTasks = async (req: Request, res: Response) => {
 
     const rawItem = body as Record<string, any>;
 
-    // ⭐ Extract and validate action/id early
     const action = rawItem.action;
     const id = rawItem.id;
 
@@ -73,7 +72,6 @@ export const manageTasks = async (req: Request, res: Response) => {
       }
     }
 
-    // ⭐ Safely parse all numeric and date values
     const percentageOfProject = rawItem.percentageOfProject
       ? parseFloat(rawItem.percentageOfProject)
       : undefined;
@@ -85,7 +83,6 @@ export const manageTasks = async (req: Request, res: Response) => {
       ? new Date(rawItem.releaseDate)
       : undefined;
 
-    // ⭐ Construct the final service item
     const serviceTaskItem: TaskUpdateItem = {
       action: action,
       id: id,
@@ -100,7 +97,6 @@ export const manageTasks = async (req: Request, res: Response) => {
       galleryItemsToCreate: processedGalleryItems,
     };
 
-    // ⭐ Refined validation for CREATE action
     if (action === "create") {
       const isInvalid =
         !serviceTaskItem.contributorId ||
@@ -138,7 +134,6 @@ export const manageTasks = async (req: Request, res: Response) => {
       return res.status(statusCode).send();
     }
 
-    // ⭐ Find the updated/created task for return
     const updatedTask =
       updatedMilestone.tasks.find((t) => t.id === serviceTaskItem.id) ||
       (action === "create" && updatedMilestone.tasks.slice(-1)[0]) ||

@@ -257,9 +257,6 @@ export const manageMilestoneWithFiles = async (req: Request, res: Response) => {
       return res.status(statusCode).send();
     }
 
-    // ⭐ Find the updated/created milestone for return.
-    // If 'create', the newly created milestone is usually the last one in the returned list.
-    // If 'update', search by ID first, then by title as a fallback.
     const returnedMilestone =
       updatedProject.milestones.find((m) => m.id === serviceMilestoneItem.id) ||
       (body.action === "create" && updatedProject.milestones.slice(-1)[0]) ||
@@ -270,7 +267,6 @@ export const manageMilestoneWithFiles = async (req: Request, res: Response) => {
     if (returnedMilestone) {
       return res.status(statusCode).json(returnedMilestone);
     } else {
-      // Fallback for update/create action where the specific milestone couldn't be located
       return res.status(200).json(updatedProject);
     }
   } catch (err) {
