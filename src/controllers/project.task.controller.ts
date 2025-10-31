@@ -38,27 +38,18 @@ export const manageTasks = async (req: Request, res: Response) => {
     const files = req.files as unknown as FileGroups;
 
     const rawItem = body as Record<string, any>;
-    console.log("Raw Item:", rawItem);
-    const item: TaskUpdateItem = {
-      action: rawItem.action,
-      id: rawItem.id,
-      contributorId: rawItem.contributorId,
-      title: rawItem.title,
-      priority: rawItem.priority,
-      dueDate: rawItem.dueDate,
-      description: rawItem.description,
-      percentageOfProject: rawItem.percentageOfProject,
-      percentageToRelease: rawItem.percentageToRelease,
-      releaseDate: rawItem.releaseDate,
-    };
 
-    if (!item.action || (item.action !== "create" && !item.id)) {
+    // ⭐ Extract and validate action/id early
+    const action = rawItem.action;
+    const id = rawItem.id;
+
+    if (!action || (action !== "create" && !id)) {
       return res
         .status(400)
         .json({ message: "Action and Task ID are required." });
     }
 
-    if (item.action === "delete" && (files.image || files.file)) {
+    if (action === "delete" && (files.image || files.file)) {
       return res
         .status(400)
         .json({ message: "Cannot upload files when deleting a task." });
@@ -66,7 +57,7 @@ export const manageTasks = async (req: Request, res: Response) => {
 
     let processedGalleryItems: GalleryItemCreateInput[] = [];
 
-    if (item.action === "create" || item.action === "update") {
+    if (action === "create" || action === "update") {
       const rawImages = files.image || [];
       const rawFiles = files.file || [];
       const allRawFiles: MulterFile[] = [...rawImages, ...rawFiles];
@@ -82,48 +73,51 @@ export const manageTasks = async (req: Request, res: Response) => {
       }
     }
 
-    const percentageOfProject = item.percentageOfProject
-      ? parseFloat(item.percentageOfProject as unknown as string)
+    // ⭐ Safely parse all numeric and date values
+    const percentageOfProject = rawItem.percentageOfProject
+      ? parseFloat(rawItem.percentageOfProject)
       : undefined;
-    const percentageToRelease = item.percentageToRelease
-      ? parseFloat(item.percentageToRelease as unknown as string)
+    const percentageToRelease = rawItem.percentageToRelease
+      ? parseFloat(rawItem.percentageToRelease)
       : undefined;
-    const dueDate = item.dueDate
-      ? new Date(item.dueDate as unknown as string)
-      : undefined;
-    const releaseDate = item.releaseDate
-      ? new Date(item.releaseDate as unknown as string)
+    const dueDate = rawItem.dueDate ? new Date(rawItem.dueDate) : undefined;
+    const releaseDate = rawItem.releaseDate
+      ? new Date(rawItem.releaseDate)
       : undefined;
 
+    // ⭐ Construct the final service item
     const serviceTaskItem: TaskUpdateItem = {
-      action: item.action,
-      id: item.id,
-      contributorId: item.contributorId,
-      title: item.title,
-      priority: item.priority,
+      action: action,
+      id: id,
+      contributorId: rawItem.contributorId,
+      title: rawItem.title,
+      priority: rawItem.priority,
       dueDate: dueDate,
-      description: item.description,
+      description: rawItem.description,
       percentageOfProject: percentageOfProject,
       percentageToRelease: percentageToRelease,
       releaseDate: releaseDate,
       galleryItemsToCreate: processedGalleryItems,
     };
 
-    if (
-      item.action === "create" &&
-      (!serviceTaskItem.contributorId ||
+    // ⭐ Refined validation for CREATE action
+    if (action === "create") {
+      const isInvalid =
+        !serviceTaskItem.contributorId ||
         !serviceTaskItem.title ||
         serviceTaskItem.percentageOfProject === undefined ||
         isNaN(serviceTaskItem.percentageOfProject) ||
         serviceTaskItem.percentageToRelease === undefined ||
         isNaN(serviceTaskItem.percentageToRelease) ||
         !serviceTaskItem.dueDate ||
-        isNaN(serviceTaskItem.dueDate.getTime()))
-    ) {
-      return res.status(400).json({
-        message:
-          "Missing required fields for CREATE: contributorId, title, percentageOfProject, percentageToRelease, or dueDate.",
-      });
+        isNaN(serviceTaskItem.dueDate.getTime());
+
+      if (isInvalid) {
+        return res.status(400).json({
+          message:
+            "Missing required fields or invalid format for CREATE: contributorId, title, percentageOfProject, percentageToRelease, or dueDate.",
+        });
+      }
     }
 
     const serviceInput: ManageTasksInput = {
@@ -138,15 +132,17 @@ export const manageTasks = async (req: Request, res: Response) => {
     );
 
     const statusCode =
-      item.action === "create" ? 201 : item.action === "delete" ? 204 : 200;
+      action === "create" ? 201 : action === "delete" ? 204 : 200;
 
-    if (item.action === "delete") {
+    if (action === "delete") {
       return res.status(statusCode).send();
     }
 
-    const updatedTask = updatedMilestone.tasks.find(
-      (t) => t.id === serviceTaskItem.id || t.title === serviceTaskItem.title
-    );
+    // ⭐ Find the updated/created task for return
+    const updatedTask =
+      updatedMilestone.tasks.find((t) => t.id === serviceTaskItem.id) ||
+      (action === "create" && updatedMilestone.tasks.slice(-1)[0]) ||
+      updatedMilestone.tasks.find((t) => t.title === serviceTaskItem.title);
 
     return res.status(statusCode).json(updatedTask);
   } catch (err) {

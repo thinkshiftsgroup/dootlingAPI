@@ -162,7 +162,6 @@ export const makeProjectEscrowController = async (
     handleServiceError(res, error);
   }
 };
-
 export const manageEscrowProjectController = async (
   req: Request,
   res: Response,
@@ -186,6 +185,11 @@ export const manageEscrowProjectController = async (
         projectImageUrl = uploadedUrls[0];
         updateData.projectImageUrl = projectImageUrl;
       }
+    }
+
+    if (updateData.hasOwnProperty("isPublic")) {
+      updateData.isPublic =
+        updateData.isPublic === "true" || updateData.isPublic === 1;
     }
 
     if (Object.keys(updateData).length === 0) {

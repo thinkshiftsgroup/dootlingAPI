@@ -409,60 +409,69 @@ type GeneralContributorRecord = Contributor & {
     country: string | null;
   };
 };
+const USER_SELECT_FIELDS = {
+  select: {
+    username: true,
+    fullName: true,
+    profilePhotoUrl: true,
+    lastActive: true,
+    biodata: {
+      select: {
+        headline: true,
+        country: true,
+      },
+    },
+  },
+};
+
+const PROJECT_SELECT_FIELDS = {
+  select: {
+    title: true,
+  },
+};
+
+async function _getContributorRecords(
+  ownerId: string,
+  take?: number,
+  orderBy: "asc" | "desc" = "asc"
+) {
+  const records = await prisma.contributor.findMany({
+    where: {
+      project: {
+        ownerId: ownerId,
+        isDeleted: false,
+      },
+    },
+    take: take,
+    include: {
+      user: USER_SELECT_FIELDS,
+      project: PROJECT_SELECT_FIELDS,
+    },
+    orderBy: {
+      createdAt: orderBy,
+    },
+  });
+
+  const mappedRecords = records.map((record) => ({
+    ...record,
+    user: {
+      username: record.user.username,
+      fullName: record.user.fullName,
+      profilePhotoUrl: record.user.profilePhotoUrl,
+      lastActive: record.user.lastActive,
+      headline: record.user.biodata?.headline ?? null,
+      country: record.user.biodata?.country ?? null,
+    },
+  }));
+
+  return mappedRecords as unknown as GeneralContributorRecord[];
+}
 
 export async function fetchGeneralContributors(
   ownerId: string
 ): Promise<GeneralContributorRecord[]> {
   try {
-    const contributorRecords = await prisma.contributor.findMany({
-      where: {
-        project: {
-          ownerId: ownerId,
-          isDeleted: false,
-        },
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            username: true,
-            fullName: true,
-            profilePhotoUrl: true,
-            lastActive: true,
-            biodata: {
-              select: {
-                headline: true,
-                country: true,
-              },
-            },
-          },
-        },
-        project: {
-          select: {
-            id: true,
-            title: true,
-          },
-        },
-      },
-      orderBy: {
-        createdAt: "asc",
-      },
-    });
-
-    const mappedRecords = contributorRecords.map((record) => ({
-      ...record,
-      user: {
-        id: record.user.id,
-        username: record.user.username,
-        fullName: record.user.fullName,
-        profilePhotoUrl: record.user.profilePhotoUrl,
-        lastActive: record.user.lastActive,
-        headline: record.user.biodata?.headline ?? null,
-        country: record.user.biodata?.country ?? null,
-      },
-    }));
-
-    return mappedRecords as unknown as GeneralContributorRecord[];
+    return await _getContributorRecords(ownerId);
   } catch (error) {
     throw new Error("Failed to fetch general contributor list.");
   }
@@ -473,60 +482,12 @@ export async function fetchRecentGeneralContributors(
   limit: number = 5
 ): Promise<GeneralContributorRecord[]> {
   try {
-    const contributorRecords = await prisma.contributor.findMany({
-      where: {
-        project: {
-          ownerId: ownerId,
-          isDeleted: false,
-        },
-      },
-      take: limit,
-      include: {
-        user: {
-          select: {
-            id: true,
-            username: true,
-            fullName: true,
-            profilePhotoUrl: true,
-            lastActive: true,
-            biodata: {
-              select: {
-                headline: true,
-                country: true,
-              },
-            },
-          },
-        },
-        project: {
-          select: {
-            id: true,
-            title: true,
-          },
-        },
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
-
-    const mappedRecords = contributorRecords.map((record) => ({
-      ...record,
-      user: {
-        id: record.user.id,
-        username: record.user.username,
-        fullName: record.user.fullName,
-        profilePhotoUrl: record.user.profilePhotoUrl,
-        lastActive: record.user.lastActive,
-        headline: record.user.biodata?.headline ?? null,
-        country: record.user.biodata?.country ?? null,
-      },
-    }));
-
-    return mappedRecords as unknown as GeneralContributorRecord[];
+    return await _getContributorRecords(ownerId, limit, "desc");
   } catch (error) {
     throw new Error("Failed to fetch recently added general contributors.");
   }
 }
+
 export async function fetchUserContributorProjects(
   userId: string
 ): Promise<ProjectInvitation[]> {

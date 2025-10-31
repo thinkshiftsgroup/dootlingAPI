@@ -91,26 +91,31 @@ export const createMilestoneWithFiles = async (req: Request, res: Response) => {
       }));
     }
 
+    const releasePercentage = parseInt(body.releasePercentage, 10);
+    const releaseDate = body.releaseDate
+      ? new Date(body.releaseDate)
+      : undefined;
+    const dueDate = body.dueDate ? new Date(body.dueDate) : undefined;
+
     const serviceMilestoneItem: MilestoneUpdateItem = {
       action: "create",
       title: body.title,
-      releasePercentage: parseInt(body.releasePercentage, 10),
-      releaseDate: new Date(body.releaseDate),
-      dueDate: new Date(body.dueDate),
+      releasePercentage: releasePercentage,
+      releaseDate: releaseDate,
+      dueDate: dueDate,
       description: body.description,
       galleryItemsToCreate: processedGalleryItems,
     };
 
     if (
       !serviceMilestoneItem.title ||
-      serviceMilestoneItem.releasePercentage === undefined ||
-      isNaN(serviceMilestoneItem.releasePercentage) ||
-      !serviceMilestoneItem.dueDate ||
-      isNaN(serviceMilestoneItem.dueDate.getTime())
+      isNaN(releasePercentage) ||
+      !dueDate ||
+      isNaN(dueDate.getTime())
     ) {
       return res.status(400).json({
         message:
-          "Missing required fields: title, releasePercentage, or dueDate.",
+          "Missing required fields or invalid format for: title, releasePercentage, or dueDate.",
       });
     }
 
@@ -122,13 +127,12 @@ export const createMilestoneWithFiles = async (req: Request, res: Response) => {
 
     const updatedProject = await createProjectMilestones(serviceInput);
 
-    return res
-      .status(201)
-      .json(
-        updatedProject.milestones.find(
-          (m) => m.title === serviceMilestoneItem.title
-        )
-      );
+    const createdMilestone =
+      updatedProject.milestones.find(
+        (m) => m.title === serviceMilestoneItem.title
+      ) || updatedProject.milestones.slice(-1)[0];
+
+    return res.status(201).json(createdMilestone);
   } catch (err) {
     const error = err as Error;
 
@@ -174,7 +178,7 @@ export const manageMilestoneWithFiles = async (req: Request, res: Response) => {
     }
 
     const body = req.body;
-    const files = req.files;
+    const files = req.files as { image?: MulterFile[]; file?: MulterFile[] };
 
     if (!body.action || (body.action !== "create" && !body.id)) {
       return res
@@ -249,15 +253,22 @@ export const manageMilestoneWithFiles = async (req: Request, res: Response) => {
       return res.status(statusCode).send();
     }
 
-    return res
-      .status(statusCode)
-      .json(
-        updatedProject.milestones.find(
-          (m) =>
-            m.id === serviceMilestoneItem.id ||
-            m.title === serviceMilestoneItem.title
-        )
+    // ⭐ Find the updated/created milestone for return.
+    // If 'create', the newly created milestone is usually the last one in the returned list.
+    // If 'update', search by ID first, then by title as a fallback.
+    const returnedMilestone =
+      updatedProject.milestones.find((m) => m.id === serviceMilestoneItem.id) ||
+      (body.action === "create" && updatedProject.milestones.slice(-1)[0]) ||
+      updatedProject.milestones.find(
+        (m) => m.title === serviceMilestoneItem.title
       );
+
+    if (returnedMilestone) {
+      return res.status(statusCode).json(returnedMilestone);
+    } else {
+      // Fallback for update/create action where the specific milestone couldn't be located
+      return res.status(200).json(updatedProject);
+    }
   } catch (err) {
     const error = err as Error;
 
