@@ -187,9 +187,36 @@ export const manageEscrowProjectController = async (
       }
     }
 
-    if (updateData.hasOwnProperty("isPublic")) {
+    if (Object.prototype.hasOwnProperty.call(updateData, "isPublic")) {
       updateData.isPublic =
         updateData.isPublic === "true" || updateData.isPublic === 1;
+    }
+
+    if (
+      Object.prototype.hasOwnProperty.call(updateData, "totalBudget") &&
+      typeof updateData.totalBudget === "string"
+    ) {
+      const parsedBudget = parseFloat(updateData.totalBudget);
+      if (!isNaN(parsedBudget)) {
+        updateData.totalBudget = parsedBudget;
+      } else {
+        return res.status(400).json({
+          message: "Invalid format for totalBudget. Expected a number.",
+        });
+      }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(updateData, "fundsRule")) {
+      updateData.fundsRule = updateData.fundsRule === "true";
+    }
+    if (
+      Object.prototype.hasOwnProperty.call(
+        updateData,
+        "receiveEmailNotifications"
+      )
+    ) {
+      updateData.receiveEmailNotifications =
+        updateData.receiveEmailNotifications === "true";
     }
 
     if (Object.keys(updateData).length === 0) {
