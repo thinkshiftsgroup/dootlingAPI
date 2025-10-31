@@ -213,12 +213,16 @@ export const manageMilestoneWithFiles = async (req: Request, res: Response) => {
       ? parseInt(body.releasePercentage, 10)
       : undefined;
     const dueDate = body.dueDate ? new Date(body.dueDate) : undefined;
+    const releaseDate = body.releaseDate
+      ? new Date(body.releaseDate)
+      : undefined;
 
     const serviceMilestoneItem: MilestoneUpdateItem = {
       action: body.action,
       id: body.id,
       title: body.title,
       releasePercentage: releasePercentage,
+      releaseDate: releaseDate,
       dueDate: dueDate,
       description: body.description,
       galleryItemsToCreate: processedGalleryItems,
