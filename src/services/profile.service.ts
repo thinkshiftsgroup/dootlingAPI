@@ -1,6 +1,7 @@
 import { PrismaClient, Biodata, User } from "@prisma/client";
 
 const prisma = new PrismaClient();
+
 type UserWithoutPassword = Omit<User, "password">;
 
 interface UserUpdateData {
@@ -20,54 +21,76 @@ interface BiodataUpdateData {
 }
 
 type UpdateData = UserUpdateData & BiodataUpdateData;
-interface BiodataWithProfile extends Biodata {
+
+interface UserProfileData {
+  id: string;
+  email: string;
+  username: string | null;
   firstname: string | null;
   lastname: string | null;
-  email: string;
+  fullName: string;
+  profilePhotoUrl?: string | null;
+
+  biodata: {
+    dateOfBirth: Date;
+    country: string | null;
+    pronouns: string | null;
+    phone: string | null;
+    city: string | null;
+    role: string | null;
+    industry: string | null;
+    tags: string | null;
+    headline: string | null;
+    languages?: string | null;
+    id: string;
+    createdAt: Date;
+    updatedAt: Date;
+    userId: string;
+  } | null;
 }
-export async function fetchBiodata(
-  userId: string
-): Promise<BiodataWithProfile> {
+
+type UserWithBiodata = User & { biodata: Biodata | null };
+
+const mapUserToProfileData = (user: UserWithBiodata): UserProfileData => {
+  const username = user.username ?? null;
+
+  return {
+    id: user.id,
+    email: user.email,
+    username: username,
+    firstname: user.firstname,
+    lastname: user.lastname,
+    fullName: user.fullName,
+    profilePhotoUrl: user.profilePhotoUrl,
+    biodata: user.biodata,
+  };
+};
+
+export async function fetchBiodata(userId: string): Promise<UserProfileData> {
   try {
-    const user = await prisma.user.findUnique({
+    let user = (await prisma.user.findUnique({
       where: { id: userId },
-      select: {
-        id: true,
-        fullName: true,
-        email: true,
-        firstname: true,
-        lastname: true,
+      include: {
+        biodata: true,
       },
-    });
+    })) as UserWithBiodata;
 
     if (!user) {
       throw new Error(`User with ID: ${userId} not found.`);
     }
 
-    let biodata = await prisma.biodata.findUnique({
-      where: {
-        userId: userId,
-      },
-    });
-
-    if (!biodata) {
-      biodata = await prisma.biodata.create({
+    if (!user.biodata) {
+      const newBiodata = await prisma.biodata.create({
         data: {
           userId: userId,
           dateOfBirth: new Date(),
           headline: `A new member, ${user.fullName || user.email}, has joined!`,
         },
       });
+      user = { ...user, biodata: newBiodata };
     }
 
-    const biodataWithProfile: BiodataWithProfile = {
-      ...biodata,
-      email: user.email,
-      firstname: user.firstname,
-      lastname: user.lastname,
-    };
-
-    return biodataWithProfile;
+    return mapUserToProfileData(user);
   } catch (error) {
     throw new Error(
       error instanceof Error
@@ -80,7 +103,7 @@ export async function fetchBiodata(
 export async function updateProfile(
   userId: string,
   data: UpdateData
-): Promise<{ user: any; biodata: Biodata }> {
+): Promise<UserProfileData> {
   const {
     firstname,
     lastname,
@@ -102,13 +125,14 @@ export async function updateProfile(
 
   if (firstname !== undefined || lastname !== undefined) {
     const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (user) {
-      const newFirst =
-        firstname !== undefined ? firstname : user.firstname || "";
-      const newLast = lastname !== undefined ? lastname : user.lastname || "";
-
-      userUpdatePayload.fullName = `${newFirst} ${newLast}`.trim();
+    if (!user) {
+      throw new Error("User not found during update preparation.");
     }
+
+    const newFirst = firstname !== undefined ? firstname : user.firstname || "";
+    const newLast = lastname !== undefined ? lastname : user.lastname || "";
+
+    userUpdatePayload.fullName = `${newFirst} ${newLast}`.trim();
   }
 
   const biodataPayload: any = {};
@@ -120,7 +144,9 @@ export async function updateProfile(
         throw new Error("Invalid date format provided for dateOfBirth.");
       }
     } catch (e) {
-      console.error("Date parsing error for dateOfBirth:", dateOfBirth, e);
+      const errorMessage =
+        e instanceof Error ? e.message : "Invalid date format for dateOfBirth.";
+      throw new Error(errorMessage);
     }
   }
 
@@ -157,9 +183,12 @@ export async function updateProfile(
       throw new Error("User not found during update transaction.");
     }
 
-    const { password, ...userWithoutPassword } = updatedUser;
+    const userWithBiodata: UserWithBiodata = {
+      ...updatedUser,
+      biodata: updatedBiodata,
+    };
 
-    return { user: userWithoutPassword, biodata: updatedBiodata };
+    return mapUserToProfileData(userWithBiodata);
   } catch (error) {
     const errorMessage =
       error instanceof Error
@@ -171,17 +200,19 @@ export async function updateProfile(
 export async function updateProfilePhotoUrl(
   userId: string,
   profilePhotoUrl: string | null
-): Promise<UserWithoutPassword> {
+): Promise<UserProfileData> {
   try {
-    const updatedUser = await prisma.user.update({
+    const updatedUser = (await prisma.user.update({
       where: { id: userId },
       data: {
         profilePhotoUrl: profilePhotoUrl,
       },
-    });
+      include: {
+        biodata: true,
+      },
+    })) as UserWithBiodata;
 
-    const { password, ...userWithoutPassword } = updatedUser;
-    return userWithoutPassword;
+    return mapUserToProfileData(updatedUser);
   } catch (error) {
     const errorMessage =
       error instanceof Error
