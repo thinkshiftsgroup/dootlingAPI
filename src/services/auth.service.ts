@@ -13,6 +13,12 @@ const getExpiry = (minutes: number): Date => {
   expiry.setMinutes(expiry.getMinutes() + minutes);
   return expiry;
 };
+const splitFullName = (fullName: string) => {
+  const parts = fullName.trim().split(/\s+/);
+  const firstname = parts[0] || "";
+  const lastname = parts.length > 1 ? parts.slice(1).join(" ") : "";
+  return { firstname, lastname };
+};
 type UserWithBiodata = Omit<User, "password"> & { biodata: Biodata | null };
 
 const generateAuthToken = (user: {
@@ -46,7 +52,7 @@ export const registerUser = async (
   if (existingUser) {
     throw new Error("User with this email already exists.");
   }
-
+  const { firstname, lastname } = splitFullName(fullName);
   const hashedPassword = await bcrypt.hash(password, 10);
   const verificationCode = generateSixDigitCode();
   const verificationCodeExpires = getExpiry(15);
@@ -56,6 +62,8 @@ export const registerUser = async (
       fullName,
       email,
       username,
+      firstname,
+      lastname,
       password: hashedPassword,
       verificationCode,
       verificationCodeExpires,
