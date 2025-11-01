@@ -118,6 +118,9 @@ export const verifyEmail = async (
       verificationCode: null,
       verificationCodeExpires: null,
     },
+    include: {
+      biodata: true,
+    },
   });
 
   const token = generateAuthToken(updatedUser);
