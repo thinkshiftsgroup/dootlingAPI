@@ -127,7 +127,7 @@ export const verifyEmail = async (
 
   const { password: _, ...userWithoutPassword } = updatedUser;
 
-  return { token, user: userWithoutPassword };
+  return { user: userWithoutPassword, token };
 };
 
 export const resendVerificationCode = async (email: string): Promise<void> => {
