@@ -101,3 +101,39 @@ export async function fetchUserBiodata(
     );
   }
 }
+
+export async function fetchUserBiodataByUsername(
+  username: string
+): Promise<UserProfileData> {
+  try {
+    let user = (await prisma.user.findUnique({
+      where: { username: username },
+      include: {
+        biodata: true,
+      },
+    })) as UserWithBiodata;
+
+    if (!user) {
+      throw new Error(`User with username: ${username} not found.`);
+    }
+
+    if (!user.biodata) {
+      const newBiodata = await prisma.biodata.create({
+        data: {
+          userId: user.id,
+          dateOfBirth: new Date(),
+          headline: `A new member, ${user.fullName || user.email}, has joined!`,
+        },
+      });
+      user = { ...user, biodata: newBiodata };
+    }
+
+    return mapUserToProfileData(user);
+  } catch (error) {
+    throw new Error(
+      error instanceof Error
+        ? error.message
+        : "Could not fetch or create biodata details."
+    );
+  }
+}

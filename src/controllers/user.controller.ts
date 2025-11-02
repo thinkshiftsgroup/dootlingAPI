@@ -1,14 +1,43 @@
 import { Request, Response } from "express";
-import { fetchUserBiodata } from "@services/user.service";
+import {
+  fetchUserBiodata,
+  fetchUserBiodataByUsername,
+} from "@services/user.service";
 
 export const getUserProfileController = async (req: Request, res: Response) => {
   const { userId } = req.params;
   if (!userId) {
-    return res.status(401).json({ message: "Authentication required." });
+    return res.status(401).json({ message: "user required." });
   }
 
   try {
     const biodata = await fetchUserBiodata(userId);
+
+    if (!biodata) {
+      return res.status(404).json({ message: "Profile data not found." });
+    }
+
+    return res.status(200).json(biodata);
+  } catch (error) {
+    console.error("Error in getProfileController:", error);
+    return res.status(500).json({
+      message: (error as Error).message || "Could not fetch profile.",
+    });
+  }
+};
+
+export const getPublicProfileByUsernameController = async (
+  req: Request,
+  res: Response
+) => {
+  const { username } = req.params;
+
+  if (!username) {
+    return res.status(400).json({ message: "Username is required." });
+  }
+
+  try {
+    const biodata = await fetchUserBiodataByUsername(username);
 
     if (!biodata) {
       return res.status(404).json({ message: "Profile data not found." });
