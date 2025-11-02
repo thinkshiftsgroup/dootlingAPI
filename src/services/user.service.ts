@@ -30,6 +30,7 @@ interface UserProfileData {
   lastname: string | null;
   fullName: string;
   profilePhotoUrl?: string | null;
+  projectCount: number;
 
   biodata: {
     dateOfBirth: Date;
@@ -49,9 +50,16 @@ interface UserProfileData {
   } | null;
 }
 
-type UserWithBiodata = User & { biodata: Biodata | null };
+type UserWithBiodataAndCount = User & {
+  biodata: Biodata | null;
+  _count: {
+    projectsOwned: number;
+  };
+};
 
-const mapUserToProfileData = (user: UserWithBiodata): UserProfileData => {
+const mapUserToProfileData = (
+  user: UserWithBiodataAndCount
+): UserProfileData => {
   const username = user.username ?? null;
 
   return {
@@ -62,6 +70,7 @@ const mapUserToProfileData = (user: UserWithBiodata): UserProfileData => {
     lastname: user.lastname,
     fullName: user.fullName,
     profilePhotoUrl: user.profilePhotoUrl,
+    projectCount: user._count.projectsOwned,
     biodata: user.biodata,
   };
 };
@@ -74,8 +83,13 @@ export async function fetchUserBiodata(
       where: { id: userId },
       include: {
         biodata: true,
+        _count: {
+          select: {
+            projectsOwned: true,
+          },
+        },
       },
-    })) as UserWithBiodata;
+    })) as UserWithBiodataAndCount;
 
     if (!user) {
       throw new Error(`User with ID: ${userId} not found.`);
@@ -110,13 +124,16 @@ export async function fetchUserBiodataByUsername(
       where: { username: username },
       include: {
         biodata: true,
+        _count: {
+          select: {
+            projectsOwned: true,
+          },
+        },
       },
-    })) as UserWithBiodata;
-
+    })) as UserWithBiodataAndCount;
     if (!user) {
       throw new Error(`User with username: ${username} not found.`);
     }
-
     if (!user.biodata) {
       const newBiodata = await prisma.biodata.create({
         data: {
