@@ -11,6 +11,7 @@ import { connectionsRouter } from "@routes/serviceConnection.router";
 import { projectRouter } from "@routes/project.route";
 import { milestonesRouter } from "@routes/project.milestone.route";
 import { tasksRouter } from "@routes/project.task.route";
+import { userRouter } from "@routes/user.route";
 import { homeRouter } from "@routes/home.route";
 const app = express();
 
@@ -41,6 +42,7 @@ app.use("/api/projects", projectRouter);
 app.use("/api/milestones", milestonesRouter);
 app.use("/api/tasks", tasksRouter);
 app.use("/api/home", homeRouter);
+app.use("/api/users", userRouter);
 
 app.get("/health", async (req: Request, res: Response) => {
   res.status(200).json({ status: "UP", message: "Service is healthy" });
